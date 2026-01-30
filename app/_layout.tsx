@@ -1,3 +1,4 @@
+import 'react-native-get-random-values';
 import { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { Amplify } from 'aws-amplify';
