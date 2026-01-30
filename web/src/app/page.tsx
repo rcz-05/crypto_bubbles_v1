@@ -19,11 +19,14 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState("Day");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Coin | null>(null);
-  const [motionReady, setMotionReady] = useState(false);
+  // const [motionReady, setMotionReady] = useState(false); // Unused for now
 
+
+  // Default dimensions
   const { ref, width, height } = useMeasure<HTMLDivElement>();
-  const drawWidth = width || 1200;
-  const drawHeight = height || 720;
+  // Use slightly smaller default to avoid scrollbars before measure
+  const drawWidth = width || 800;
+  const drawHeight = height || 600;
 
   useEffect(() => {
     fetchCoins();
@@ -76,61 +79,51 @@ export default function HomePage() {
           <span className="brand-dot" />
           CRYPTO BUBBLES
         </div>
+
         <HeaderTabs options={TIME_OPTIONS} active={activeTab} onChange={setActiveTab} />
+
         <div className="controls">
-          <Link href="/" className="nav-link">
-            Bubbles
-          </Link>
-          <Link href="/favorites" className="nav-link">
-            Favorites
-          </Link>
-          <Link href="/settings" className="nav-link">
-            Settings
-          </Link>
           <div className="search">
             <input
               type="text"
-              placeholder="Search cryptocurrency"
+              placeholder="Search coin..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+
+          <Link href="/favorites" className="nav-link">
+            Favorites ({favorites.length})
+          </Link>
+          <Link href="/settings" className="nav-link">
+            Settings
+          </Link>
+
           <button className="refresh-btn secondary" onClick={handleRefresh}>
             Refresh (R)
           </button>
-          <button
-            className="refresh-btn secondary"
-            onClick={async () => setMotionReady(await requestMotionPermission())}
-            style={{ opacity: motionReady ? 0.7 : 1 }}
-          >
-            {motionReady ? "Shake enabled" : "Enable shake"}
-          </button>
+
+          {/* Mobile Shake Hint (Hidden for now or just text) */}
+          <div className="shake-hint" style={{ display: "none" }}>Shake to refresh</div>
         </div>
       </header>
 
       <main className="page-wrap">
-        <div className="status-bar">
-          <span className="status-dot" />
-          <span>{status === "loading" ? "Loading market data..." : "Live market data"}</span>
-          <span>• Last updated: {lastUpdatedLabel}</span>
-          <span>• Favorites: {favorites.length}</span>
-          {error && <span style={{ color: "#ff6b6b" }}>• {error}</span>}
-        </div>
-
         <div
           ref={ref}
           className="board"
-          style={{ minHeight: "70vh", border: "1px solid var(--border)" }}
         >
           {filtered.length === 0 && status !== "loading" ? (
             <div className="ghost">No coins match that search.</div>
           ) : null}
+
           <BubbleChart
             data={filtered}
             width={drawWidth}
             height={drawHeight}
             onSelect={setSelected}
           />
+
           {status === "loading" && (
             <div
               style={{
@@ -139,13 +132,23 @@ export default function HomePage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                background: "rgba(0,0,0,0.2)",
-                color: "var(--muted)",
+                background: "rgba(0,0,0,0.4)",
+                color: "var(--text)",
+                zIndex: 10,
+                backdropFilter: "blur(2px)"
               }}
             >
-              Fetching latest prices…
+              Updating prices…
             </div>
           )}
+        </div>
+
+        <div className="status-bar">
+          <span className="status-dot" />
+          <span>{status === "loading" ? "Updating..." : "Live"}</span>
+          <span style={{ opacity: 0.5 }}>|</span>
+          <span>{lastUpdatedLabel}</span>
+          {error && <span style={{ color: "var(--danger)" }}>• {error}</span>}
         </div>
       </main>
 

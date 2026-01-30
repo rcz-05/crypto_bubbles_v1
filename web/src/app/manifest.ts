@@ -1,0 +1,20 @@
+import { MetadataRoute } from 'next'
+
+export default function manifest(): MetadataRoute.Manifest {
+    return {
+        name: 'Crypto Bubbles',
+        short_name: 'Bubbles',
+        description: 'Visualize crypto market in bubbles',
+        start_url: '/',
+        display: 'standalone',
+        background_color: '#111111',
+        theme_color: '#1a1a1a',
+        icons: [
+            {
+                src: '/favicon.ico',
+                sizes: 'any',
+                type: 'image/x-icon',
+            },
+        ],
+    }
+}
