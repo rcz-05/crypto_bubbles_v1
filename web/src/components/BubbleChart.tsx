@@ -22,12 +22,10 @@ export function BubbleChart({ data, width, height, onSelect }: BubbleChartProps)
   const nodes = useMemo(() => {
     if (!width || !height || !data.length) return [] as Node[];
 
-    const root = hierarchy<{ children: Coin[] }>({ children: data }).sum(
-      (d: { children?: Coin[] } | Coin) => {
-        const cap = (d as Coin).market_cap;
-        return typeof cap === "number" ? Math.max(1, cap) : 0;
-      },
-    );
+    const root = hierarchy<Coin>(
+      { children: data } as unknown as Coin,
+      (d) => (d as unknown as { children?: Coin[] }).children ?? [],
+    ).sum((d) => Math.max(1, d.market_cap));
 
     const packer = pack<{ children: Coin[] }>().size([width, height]).padding(3);
 
@@ -37,7 +35,7 @@ export function BubbleChart({ data, width, height, onSelect }: BubbleChartProps)
         x: leaf.x,
         y: leaf.y,
         r: leaf.r,
-        data: leaf.data as Coin,
+        data: leaf.data,
       }));
   }, [data, width, height]);
 
