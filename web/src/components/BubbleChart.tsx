@@ -19,15 +19,16 @@ type Node = {
 };
 
 export function BubbleChart({ data, width, height, onSelect }: BubbleChartProps) {
+  type PackDatum = Coin & { children?: PackDatum[] };
+
   const nodes = useMemo(() => {
     if (!width || !height || !data.length) return [] as Node[];
 
-    const root = hierarchy<Coin>(
-      { children: data } as unknown as Coin,
-      (d) => (d as unknown as { children?: Coin[] }).children ?? [],
-    ).sum((d) => Math.max(1, d.market_cap));
+    const root = hierarchy<PackDatum>({ children: data } as PackDatum).sum((d) =>
+      Math.max(1, d.market_cap ?? 0),
+    );
 
-    const packer = pack<{ children: Coin[] }>().size([width, height]).padding(3);
+    const packer = pack<PackDatum>().size([width, height]).padding(3);
 
     return packer(root)
       .leaves()
@@ -35,7 +36,7 @@ export function BubbleChart({ data, width, height, onSelect }: BubbleChartProps)
         x: leaf.x,
         y: leaf.y,
         r: leaf.r,
-        data: leaf.data,
+        data: leaf.data as Coin,
       }));
   }, [data, width, height]);
 
