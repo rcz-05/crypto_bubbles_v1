@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "crypto-bubbles",
+    "slug": "crypto-bubbles",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "platforms": ["ios", "android", "web"],
+    "scheme": "crypto-bubbles",
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://expo.dev"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "assetBundlePatterns": ["**/*"],
+    "updates": {
+      "enabled": true
+    }
+  }
+}
