@@ -6,7 +6,7 @@ export function useMeasure<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
-  const observer = useRef<ResizeObserver>();
+  const observer = useRef<ResizeObserver | null>(null);
 
   const setRef = useCallback((node: T | null) => {
     if (observer.current && ref.current) {
