@@ -6,6 +6,10 @@ export type Coin = {
   price_change_percentage_24h: number;
   market_cap: number;
   image: string;
+  market_cap_rank: number | null;
+  total_volume: number | null;
+  high_24h: number | null;
+  low_24h: number | null;
 };
 
 export const COINGECKO_ENDPOINT =

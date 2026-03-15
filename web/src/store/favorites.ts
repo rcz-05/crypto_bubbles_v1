@@ -9,6 +9,7 @@ import {
   removeFavoriteFromApi,
   saveLocalFavorites,
 } from "@/lib/favorites";
+import { trackEvent } from "@/lib/telemetry";
 
 type FavoritesState = {
   favorites: FavoriteCoin[];
@@ -43,6 +44,11 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
     const next = [...current, { ...fav, added_at: new Date().toISOString() }];
     set({ favorites: next });
     saveLocalFavorites(next);
+    trackEvent({
+      type: "favorite_added",
+      recordedAt: new Date().toISOString(),
+      payload: { symbol: fav.symbol },
+    });
     try {
       await addFavoriteToApi(fav);
     } catch {
@@ -53,6 +59,11 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
     const next = get().favorites.filter((f) => f.symbol !== symbol);
     set({ favorites: next });
     saveLocalFavorites(next);
+    trackEvent({
+      type: "favorite_removed",
+      recordedAt: new Date().toISOString(),
+      payload: { symbol },
+    });
     try {
       await removeFavoriteFromApi(symbol);
     } catch {

@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
-import { Space_Grotesk } from "next/font/google";
+import { Instrument_Sans, Syne } from "next/font/google";
 import "./globals.css";
 
-const display = Space_Grotesk({
+const display = Syne({
   subsets: ["latin"],
   variable: "--font-display",
 });
 
+const body = Instrument_Sans({
+  subsets: ["latin"],
+  variable: "--font-body",
+});
+
 export const metadata: Metadata = {
-  title: "Crypto Bubbles Web",
-  description: "Interactive crypto market bubble board powered by CoinGecko",
+  title: "CoinCanvas",
+  description: "A guided crypto market canvas for beginners who want context before action.",
 };
 
 export default function RootLayout({
@@ -19,7 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={display.variable}>{children}</body>
+      <body className={`${display.variable} ${body.variable}`}>{children}</body>
     </html>
   );
 }

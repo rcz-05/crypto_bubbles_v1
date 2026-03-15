@@ -1,8 +1,60 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { loadLocalFavorites } from "@/lib/favorites";
+import {
+  clearTelemetry,
+  exportTelemetryPayload,
+  loadTelemetry,
+  TelemetryEvent,
+} from "@/lib/telemetry";
 
 export default function SettingsPage() {
+  const [events, setEvents] = useState<TelemetryEvent[]>(() => loadTelemetry());
+  const [favoriteCount] = useState(() => loadLocalFavorites().length);
+  const [downloadState, setDownloadState] = useState<"idle" | "done">("idle");
+
+  const summary = useMemo(() => {
+    const contextLoads = events.filter(
+      (event): event is Extract<TelemetryEvent, { type: "context_loaded" }> =>
+        event.type === "context_loaded",
+    );
+    const sourceClicks = events.filter((event) => event.type === "source_opened").length;
+    const modalOpens = events.filter((event) => event.type === "modal_opened").length;
+    const avgTime =
+      contextLoads.length > 0
+        ? Math.round(
+            contextLoads.reduce((sum, event) => sum + event.payload.time_to_context_ms, 0) /
+              contextLoads.length,
+          )
+        : 0;
+
+    return {
+      modalOpens,
+      contextLoads: contextLoads.length,
+      sourceClicks,
+      avgTime,
+    };
+  }, [events]);
+
+  const handleDownload = () => {
+    const blob = new Blob([exportTelemetryPayload()], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "coincanvas-sprint3-telemetry.json";
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setDownloadState("done");
+  };
+
+  const handleClear = () => {
+    clearTelemetry();
+    setEvents([]);
+    setDownloadState("idle");
+  };
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -10,10 +62,10 @@ export default function SettingsPage() {
           <span className="brand-dot" />
           SETTINGS
         </div>
-        <div style={{ color: "var(--muted)" }}>Lightweight config for this demo</div>
+        <div className="topbar-copy">Sprint 3 sources, instrumentation, and export tools.</div>
         <div className="controls">
           <Link href="/" className="nav-link">
-            Bubbles
+            Canvas
           </Link>
           <Link href="/favorites" className="nav-link">
             Favorites
@@ -24,29 +76,117 @@ export default function SettingsPage() {
         </div>
       </header>
 
-      <main className="page-wrap" style={{ gap: 16 }}>
-        <div className="list-card">
-          <div>
-            <div style={{ fontWeight: 700 }}>Data Source</div>
-            <div style={{ color: "var(--muted)" }}>CoinGecko markets API (top 100 by market cap)</div>
+      <main className="page-wrap interior-page">
+        <section className="hero-grid compact">
+          <div className="hero-panel">
+            <p className="hero-kicker">Testing operations</p>
+            <h1>Export raw interaction data for the Sprint 3 notebook.</h1>
+            <p className="hero-copy">
+              This page keeps the learning prototype honest: context is deterministic,
+              market data is verified, and every key user action can be exported as raw JSON.
+            </p>
           </div>
-          <Link href="https://www.coingecko.com" className="refresh-btn secondary">
-            Visit
-          </Link>
-        </div>
-        <div className="list-card">
-          <div>
-            <div style={{ fontWeight: 700 }}>Backend</div>
-            <div style={{ color: "var(--muted)" }}>
-              Favorites stored via Vercel Postgres when configured, otherwise browser localStorage.
+          <div className="hero-panel emphasis">
+            <div className="metric-grid">
+              <div className="metric-card">
+                <span className="metric-label">Modal opens</span>
+                <strong>{summary.modalOpens}</strong>
+              </div>
+              <div className="metric-card">
+                <span className="metric-label">Context loads</span>
+                <strong>{summary.contextLoads}</strong>
+              </div>
+              <div className="metric-card">
+                <span className="metric-label">Source clicks</span>
+                <strong>{summary.sourceClicks}</strong>
+              </div>
+              <div className="metric-card">
+                <span className="metric-label">Avg. time to context</span>
+                <strong>{summary.avgTime ? `${summary.avgTime}ms` : "—"}</strong>
+              </div>
+              <div className="metric-card">
+                <span className="metric-label">Saved favorites</span>
+                <strong>{favoriteCount}</strong>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="list-card">
-          <div>
-            <div style={{ fontWeight: 700 }}>Shake to Refresh</div>
-            <div style={{ color: "var(--muted)" }}>
-              Mobile browsers with motion permission. Desktop fallback: click Refresh or press R.
+        </section>
+
+        <div className="settings-grid">
+          <div className="list-card">
+            <div>
+              <div style={{ fontWeight: 700 }}>Verified market data</div>
+              <div style={{ color: "var(--muted)" }}>
+                CoinGecko markets API provides the live 24h board, price, rank, and volume
+                values shown in the modal.
+              </div>
+            </div>
+            <Link href="https://www.coingecko.com" className="refresh-btn secondary">
+              Visit
+            </Link>
+          </div>
+
+          <div className="list-card">
+            <div>
+              <div style={{ fontWeight: 700 }}>Guided context layer</div>
+              <div style={{ color: "var(--muted)" }}>
+                CoinCanvas uses curated research notes for primary demo coins and falls back
+                to deterministic market-data heuristics for the rest of the board.
+              </div>
+            </div>
+          </div>
+
+          <div className="list-card">
+            <div>
+              <div style={{ fontWeight: 700 }}>Favorites backend</div>
+              <div style={{ color: "var(--muted)" }}>
+                Favorites stay local-first for deploy safety, with optional Vercel Postgres
+                syncing when env vars are configured.
+              </div>
+            </div>
+          </div>
+
+          <div className="list-card">
+            <div>
+              <div style={{ fontWeight: 700 }}>Export raw data</div>
+              <div style={{ color: "var(--muted)" }}>
+                Download `coincanvas-sprint3-telemetry.json` with modal opens, context load
+                timing, fallback usage, source clicks, and favorite actions.
+              </div>
+            </div>
+            <button className="refresh-btn" onClick={handleDownload}>
+              {downloadState === "done" ? "Downloaded" : "Export JSON"}
+            </button>
+          </div>
+
+          <div className="list-card">
+            <div>
+              <div style={{ fontWeight: 700 }}>Reset local evidence</div>
+              <div style={{ color: "var(--muted)" }}>
+                Clear the current Sprint 3 interaction dataset before the next moderated
+                testing session.
+              </div>
+            </div>
+            <button className="refresh-btn secondary" onClick={handleClear}>
+              Clear telemetry
+            </button>
+          </div>
+
+          <div className="list-card">
+            <div>
+              <div style={{ fontWeight: 700 }}>Latest events</div>
+              <div className="card-meta">
+                {events.length === 0
+                  ? "No events recorded yet."
+                  : events
+                      .slice(-3)
+                      .reverse()
+                      .map(
+                        (event) =>
+                          `${event.type} • ${new Date(event.recordedAt).toLocaleTimeString()}`,
+                      )
+                      .join(" | ")}
+              </div>
             </div>
           </div>
         </div>

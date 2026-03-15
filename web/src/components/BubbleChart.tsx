@@ -42,7 +42,12 @@ export function BubbleChart({ data, width, height, onSelect }: BubbleChartProps)
   }, [data, width, height]);
 
   return (
-    <svg className="bubble-svg" viewBox={`0 0 ${width} ${height}`} role="img">
+    <svg
+      className="bubble-svg"
+      viewBox={`0 0 ${width} ${height}`}
+      role="img"
+      aria-label="Crypto market bubble chart"
+    >
       <defs>
         <radialGradient id="grad-pos" cx="30%" cy="30%" r="70%">
           <stop offset="0%" stopColor="#00e676" stopOpacity="0.3" />
@@ -81,30 +86,17 @@ export function BubbleChart({ data, width, height, onSelect }: BubbleChartProps)
             key={coin.id}
             transform={`translate(${node.x},${node.y})`}
             onClick={() => onSelect(coin)}
+            className="bubble-node"
             style={{
               cursor: "pointer",
               opacity: 0,
               animation: `fadeIn 0.4s ease-out ${Math.min(i * 10, 1000)}ms forwards`,
-              transformOrigin: 'center'
-            }}
-            onMouseEnter={() => {
-              // Simple hover effect via transform
-              // Note: This overrides the translate in transform attribute if we aren't careful.
-              // But SVG transform attribute is separate from CSS transform property in modern browsers?
-              // Actually it's safer to not rely on mixing them if possible.
-              // Let's use the group for position, and a child group for scale if we wanted robust scaling.
-              // But for now, let's just stick to opacity/color shifts or accept the risk.
-              // Better: Use a class and CSS for hover scale if possible?
-              // SVG transform vs CSS transform interaction can be browser specific.
-              // Let's just skip the JS hover scale to avoid complexity and bugs, and rely on CSS if we can target it.
-              // Or just use the 'bubble-group' class I added in CSS?
-              // Wait, I didn't add .bubble-group hover in globals.css.
-              // I'll add a simple hover via style here but use a wrapper group for position.
+              transformOrigin: "center",
             }}
           >
-            {/* Wrapper group for Position is the parent <g>. 
-                 Actually, let's put the scale on children? 
-                 No, let's just render. Simplicity first. */}
+            <title>
+              {coin.name}: {(coin.price_change_percentage_24h ?? 0).toFixed(2)}% over 24h
+            </title>
 
             <circle
               r={node.r}
@@ -150,7 +142,11 @@ export function BubbleChart({ data, width, height, onSelect }: BubbleChartProps)
                 fontWeight={500}
                 fontSize={fontSizePct}
                 y={showIcon ? iconSize * 0.1 + fontSizeSymbol : fontSizeSymbol * 1.0}
-                style={{ pointerEvents: "none", opacity: 0.9, textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}
+                style={{
+                  pointerEvents: "none",
+                  opacity: 0.9,
+                  textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+                }}
               >
                 {(coin.price_change_percentage_24h ?? 0).toFixed(1)}%
               </text>
