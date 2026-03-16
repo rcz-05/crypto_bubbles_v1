@@ -1,0 +1,17 @@
+{
+  "extends": "../web/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../web",
+    "types": ["vitest/globals", "node"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "./**/*.ts",
+    "./**/*.tsx",
+    "../web/src/**/*.ts",
+    "../web/src/**/*.tsx",
+    "../web/vitest.config.ts"
+  ]
+}
