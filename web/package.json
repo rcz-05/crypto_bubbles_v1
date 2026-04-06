@@ -3,12 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "sh ./scripts/build-local.sh",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run --config vitest.config.ts",
+    "test:coverage": "vitest run --coverage --config vitest.config.ts"
   },
   "dependencies": {
+    "@openrouter/sdk": "^0.9.4",
     "@vercel/postgres": "^0.10.0",
     "d3-hierarchy": "^3.1.2",
     "next": "16.1.6",
@@ -17,12 +20,18 @@
     "zustand": "^5.0.10"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.1",
     "@types/d3-hierarchy": "^3.1.7",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "4.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "typescript": "^5"
+    "jsdom": "29.0.0",
+    "typescript": "^5",
+    "vitest": "4.1.0"
   }
 }

@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  generateBuildId: async () => "local-build",
   turbopack: {
     // Use an absolute path to satisfy Vercel warning
     root: process.cwd(),

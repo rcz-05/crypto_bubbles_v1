@@ -2,8 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { CoinContext } from "@/lib/coin-context";
-import { Coin } from "@/lib/coingecko";
+import type { CoinContext } from "@/lib/coin-context";
+import type { Coin } from "@/lib/coingecko";
+import type { ExplanationResponse } from "@/lib/explanation";
+import type { CoinNews } from "@/lib/news";
 import { trackEvent } from "@/lib/telemetry";
 
 type Props = {
@@ -14,6 +16,15 @@ type Props = {
 };
 
 const contextCache = new Map<string, CoinContext>();
+const newsCache = new Map<string, CoinNews>();
+const explanationCache = new Map<string, ExplanationResponse>();
+
+type EvidenceItem = {
+  title: string;
+  source: string;
+  publishedAt: string;
+  url: string;
+};
 
 function formatCurrency(value: number | null | undefined) {
   if (value == null) return "n/a";
@@ -47,11 +58,47 @@ function formatRelativeDate(value: string) {
 export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props) {
   const cacheKey = coin ? `${coin.id}:${coin.symbol}` : null;
   const initialContext = cacheKey ? contextCache.get(cacheKey) ?? null : null;
+  const initialNews = cacheKey ? newsCache.get(cacheKey) ?? null : null;
   const [context, setContext] = useState<CoinContext | null>(initialContext);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">(
     coin ? (initialContext ? "ready" : "loading") : "idle",
   );
   const [error, setError] = useState<string | null>(null);
+  const [news, setNews] = useState<CoinNews | null>(initialNews);
+  const [newsStatus, setNewsStatus] = useState<"idle" | "loading" | "ready" | "error">(
+    coin ? (initialNews ? "ready" : "loading") : "idle",
+  );
+  const explanationCacheKey = useMemo(() => {
+    if (!coin) return null;
+
+    return JSON.stringify({
+      id: coin.id,
+      symbol: coin.symbol,
+      trend: {
+        price_change_percentage_24h: coin.price_change_percentage_24h ?? null,
+        market_cap_rank: coin.market_cap_rank ?? null,
+        total_volume: coin.total_volume ?? null,
+        market_cap: coin.market_cap ?? null,
+        high_24h: coin.high_24h ?? null,
+        low_24h: coin.low_24h ?? null,
+      },
+      news: (news?.articles ?? []).map((article) => ({
+        title: article.title,
+        source: article.source,
+        publishedAt: article.publishedAt,
+        description: article.description,
+        url: article.url,
+      })),
+      newsFetchedAt: news?.fetchedAt ?? null,
+    });
+  }, [coin, news]);
+  const initialExplanation = explanationCacheKey
+    ? explanationCache.get(explanationCacheKey) ?? null
+    : null;
+  const [explanation, setExplanation] = useState<ExplanationResponse | null>(initialExplanation);
+  const [explanationStatus, setExplanationStatus] = useState<
+    "idle" | "loading" | "ready" | "error"
+  >(coin ? (initialExplanation ? "ready" : "idle") : "idle");
 
   useEffect(() => {
     if (!coin || !cacheKey) return;
@@ -119,6 +166,115 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
     return () => controller.abort();
   }, [cacheKey, coin]);
 
+  useEffect(() => {
+    if (!coin || !cacheKey) return;
+
+    const cached = newsCache.get(cacheKey);
+    if (cached) {
+      setNews(cached);
+      setNewsStatus("ready");
+      return;
+    }
+
+    setNews(null);
+    setNewsStatus("loading");
+
+    const controller = new AbortController();
+
+    void fetch(
+      `/api/news?symbol=${encodeURIComponent(coin.symbol)}&id=${encodeURIComponent(coin.id)}`,
+      {
+        signal: controller.signal,
+        cache: "no-store",
+      },
+    )
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`News API failed with ${res.status}`);
+        }
+        return (await res.json()) as CoinNews;
+      })
+      .then((payload) => {
+        newsCache.set(cacheKey, payload);
+        setNews(payload);
+        setNewsStatus("ready");
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setNewsStatus("error");
+      });
+
+    return () => controller.abort();
+  }, [cacheKey, coin]);
+
+  useEffect(() => {
+    if (!coin || !explanationCacheKey) return;
+
+    const cached = explanationCache.get(explanationCacheKey);
+    if (cached) {
+      setExplanation(cached);
+      setExplanationStatus("ready");
+      return;
+    }
+
+    if (newsStatus === "loading") {
+      return;
+    }
+
+    setExplanation(null);
+    setExplanationStatus("loading");
+
+    const controller = new AbortController();
+    const requestBody = {
+      coin: {
+        id: coin.id,
+        symbol: coin.symbol,
+        name: coin.name,
+      },
+      trend: {
+        price_change_percentage_24h: coin.price_change_percentage_24h,
+        market_cap_rank: coin.market_cap_rank,
+        total_volume: coin.total_volume,
+        market_cap: coin.market_cap,
+        high_24h: coin.high_24h,
+        low_24h: coin.low_24h,
+      },
+      news:
+        news?.articles.map((article) => ({
+          title: article.title,
+          source: article.source,
+          publishedAt: article.publishedAt,
+          summary: article.description,
+          url: article.url,
+        })) ?? [],
+    };
+
+    void fetch("/api/explanation", {
+      method: "POST",
+      signal: controller.signal,
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`Explanation API failed with ${res.status}`);
+        }
+        return (await res.json()) as ExplanationResponse;
+      })
+      .then((payload) => {
+        explanationCache.set(explanationCacheKey, payload);
+        setExplanation(payload);
+        setExplanationStatus("ready");
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setExplanationStatus("error");
+      });
+
+    return () => controller.abort();
+  }, [coin, explanationCacheKey, news, newsStatus]);
+
   const intradayRange = useMemo(() => {
     if (!coin?.high_24h || !coin.low_24h || coin.low_24h <= 0) {
       return null;
@@ -126,16 +282,38 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
     return ((coin.high_24h - coin.low_24h) / coin.low_24h) * 100;
   }, [coin]);
 
+  const evidenceItems = useMemo<EvidenceItem[]>(() => {
+    if (news?.articles.length) {
+      return news.articles.map((article) => ({
+        title: article.title,
+        source: article.source,
+        publishedAt: article.publishedAt,
+        url: article.url,
+      }));
+    }
+
+    return context?.headlines ?? [];
+  }, [context, news]);
+
   if (!coin) return null;
   const positive = (coin.price_change_percentage_24h ?? 0) >= 0;
   const fav = isFavorite(coin.symbol);
+  const guidedSummary =
+    explanation?.explanation ??
+    context?.summary ??
+    "A generated explanation is not available yet. Use the verified market data and evidence below.";
+  const evidenceStatus =
+    newsStatus === "ready" && news?.articles.length
+      ? `Live news • ${news.provider}`
+      : context
+        ? "Prototype context"
+        : "Loading evidence";
 
   return (
     <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 100 }}>
-      {/* Click outside to close */}
       <div
         className="modal-card"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
@@ -152,14 +330,15 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
             ) : null}
             <div>
               <div className="modal-title">{coin.name}</div>
-              <div className="modal-subtitle">
-                {coin.symbol.toUpperCase()}
-              </div>
+              <div className="modal-subtitle">{coin.symbol.toUpperCase()}</div>
               <div className="modal-meta">
                 <span className={`pill ${positive ? "green" : "red"}`}>
-                  {positive ? "▲" : "▼"} {Math.abs(coin.price_change_percentage_24h ?? 0).toFixed(2)}%
+                  {positive ? "▲" : "▼"}{" "}
+                  {Math.abs(coin.price_change_percentage_24h ?? 0).toFixed(2)}%
                 </span>
-                <span>Last updated {context ? formatRelativeDate(context.lastUpdated) : "loading..."}</span>
+                <span>
+                  Last updated {context ? formatRelativeDate(context.lastUpdated) : "loading..."}
+                </span>
               </div>
             </div>
           </div>
@@ -186,11 +365,15 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
                 <h3>Guided interpretation</h3>
               </div>
               <span className="context-status">
-                {status === "loading"
-                  ? "Loading context"
-                  : context?.isFallback
-                    ? "Market-data fallback"
-                    : "Curated note"}
+                {explanationStatus === "loading"
+                  ? "Generating explanation"
+                  : explanationStatus === "ready"
+                    ? "Live explanation"
+                    : status === "loading"
+                      ? "Loading context"
+                      : context?.isFallback
+                        ? "Market-data fallback"
+                        : "Curated note"}
               </span>
             </div>
 
@@ -206,7 +389,7 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
                 volume data below.
               </p>
             ) : (
-              <p className="context-copy">{context?.summary}</p>
+              <p className="context-copy">{guidedSummary}</p>
             )}
 
             <div className="risk-row">
@@ -266,34 +449,43 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
               <p className="section-label">Evidence in this prototype</p>
               <h3>Signals to review before acting</h3>
             </div>
+            <span className="context-status">{evidenceStatus}</span>
           </div>
 
           <div className="evidence-list">
-            {(context?.headlines ?? []).map((headline) => (
-              <a
-                key={`${headline.source}-${headline.title}`}
-                className="evidence-item"
-                href={headline.url}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() =>
-                  trackEvent({
-                    type: "source_opened",
-                    recordedAt: new Date().toISOString(),
-                    payload: {
-                      symbol: coin.symbol,
-                      url: headline.url,
-                      label: headline.title,
-                    },
-                  })
-                }
-              >
-                <span className="evidence-source">
-                  {headline.source} • {formatRelativeDate(headline.publishedAt)}
-                </span>
-                <strong>{headline.title}</strong>
-              </a>
-            ))}
+            {evidenceItems.length > 0 ? (
+              evidenceItems.map((headline) => (
+                <a
+                  key={`${headline.source}-${headline.title}`}
+                  className="evidence-item"
+                  href={headline.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() =>
+                    trackEvent({
+                      type: "source_opened",
+                      recordedAt: new Date().toISOString(),
+                      payload: {
+                        symbol: coin.symbol,
+                        url: headline.url,
+                        label: headline.title,
+                      },
+                    })
+                  }
+                >
+                  <span className="evidence-source">
+                    {headline.source} • {formatRelativeDate(headline.publishedAt)}
+                  </span>
+                  <strong>{headline.title}</strong>
+                </a>
+              ))
+            ) : (
+              <p className="context-copy muted">
+                {newsStatus === "loading"
+                  ? "Loading evidence..."
+                  : "No evidence is available right now."}
+              </p>
+            )}
           </div>
         </section>
 
@@ -304,6 +496,7 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
               <h3>Open a deeper source if the move still looks actionable</h3>
             </div>
           </div>
+
           <div className="source-link-row">
             {(context?.sourceLinks ?? []).map((link) => (
               <a
