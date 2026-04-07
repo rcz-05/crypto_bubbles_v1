@@ -442,8 +442,9 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
                 <text
                   textAnchor="middle"
                   fill="#fff"
-                  fontWeight={700}
+                  fontWeight={600}
                   fontSize={fontSizeSymbol}
+                  fontFamily="var(--font-bubble), Fredoka, sans-serif"
                   y={
                     showIcon
                       ? fontSizeSymbol * 0.45
@@ -461,8 +462,9 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
                 <text
                   textAnchor="middle"
                   fill="rgba(255,255,255,0.85)"
-                  fontWeight={600}
+                  fontWeight={500}
                   fontSize={fontSizePct}
+                  fontFamily="var(--font-bubble), Fredoka, sans-serif"
                   y={
                     showIcon
                       ? fontSizeSymbol * 0.45 + fontSizePct * 1.3

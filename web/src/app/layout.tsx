@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Instrument_Sans, Syne } from "next/font/google";
+import { Instrument_Sans, Syne, Fredoka } from "next/font/google";
 import "./globals.css";
 
 const display = Syne({
@@ -10,6 +10,12 @@ const display = Syne({
 const body = Instrument_Sans({
   subsets: ["latin"],
   variable: "--font-body",
+});
+
+const bubble = Fredoka({
+  subsets: ["latin"],
+  variable: "--font-bubble",
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -24,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${display.variable} ${body.variable}`}>{children}</body>
+      <body className={`${display.variable} ${body.variable} ${bubble.variable}`}>{children}</body>
     </html>
   );
 }
