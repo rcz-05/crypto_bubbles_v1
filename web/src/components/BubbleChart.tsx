@@ -29,12 +29,18 @@ type PhysicsBody = {
   targetY: number;
 };
 
-const SPRING = 0.004;
-const DAMPING = 0.95;
-const DRIFT = 0.06;
-const COLLISION_STRENGTH = 0.5;
+/* ------------------------------------------------------------------ */
+/*  Physics tuning                                                     */
+/* ------------------------------------------------------------------ */
+const SPRING = 0.006;           // spring stiffness for return-to-target
+const DAMPING = 0.93;           // velocity decay — slightly bouncy
+const DRIFT = 0.04;             // ambient jitter
+const COLLISION_STRENGTH = 0.6; // push-apart force on overlap
 const WALL_PADDING = 2;
-const BUBBLE_GAP = 5; // px gap between bubbles
+const BUBBLE_GAP = 5;
+const CURSOR_RADIUS = 110;      // repulsion zone around pointer (px)
+const CURSOR_FORCE = 3.2;       // max repulsion strength
+const DEG = 180 / Math.PI;
 
 /* ------------------------------------------------------------------ */
 /*  Organic blob geometry                                              */
@@ -50,9 +56,9 @@ function hashSeed(s: string): number {
 }
 
 /**
- * Generate an organic blob SVG path centered at (0,0).
- * `time` drives the slow morphing animation — each control point
- * drifts on overlapping sine waves so the outline breathes.
+ * Organic blob path centered at (0,0).
+ * `time` drives continuous morphing — three overlapping sine waves
+ * at different speeds make the outline breathe and flow.
  */
 function blobPath(r: number, seed: number, time: number): string {
   const n = 10;
@@ -62,9 +68,9 @@ function blobPath(r: number, seed: number, time: number): string {
   for (let i = 0; i < n; i++) {
     const angle = (Math.PI * 2 * i) / n;
     const offset =
-      Math.sin(seed * 9.1 + i * 4.3 + time * 0.45) * wobble * 0.7 +
-      Math.cos(seed * 3.7 + i * 7.1 + time * 0.32) * wobble * 0.5 +
-      Math.sin(seed * 1.3 + i * 11.9 + time * 0.18) * wobble * 0.3;
+      Math.sin(seed * 9.1 + i * 4.3 + time * 0.9) * wobble * 0.7 +
+      Math.cos(seed * 3.7 + i * 7.1 + time * 0.65) * wobble * 0.5 +
+      Math.sin(seed * 1.3 + i * 11.9 + time * 0.4) * wobble * 0.3;
     const rr = r + offset;
     pts.push([Math.cos(angle) * rr, Math.sin(angle) * rr]);
   }
@@ -85,7 +91,7 @@ function blobPath(r: number, seed: number, time: number): string {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Physics                                                            */
+/*  Physics helpers                                                    */
 /* ------------------------------------------------------------------ */
 
 function resolveCollisions(bodies: PhysicsBody[]) {
@@ -107,8 +113,8 @@ function resolveCollisions(bodies: PhysicsBody[]) {
         b.x += nx * overlap;
         b.y += ny * overlap;
 
-        const dvx = (b.vx - a.vx) * 0.12;
-        const dvy = (b.vy - a.vy) * 0.12;
+        const dvx = (b.vx - a.vx) * 0.15;
+        const dvy = (b.vy - a.vy) * 0.15;
         a.vx += dvx;
         a.vy += dvy;
         b.vx -= dvx;
@@ -122,19 +128,19 @@ function containInBounds(body: PhysicsBody, w: number, h: number) {
   const pad = WALL_PADDING;
   if (body.x - body.r < pad) {
     body.x = body.r + pad;
-    body.vx = Math.abs(body.vx) * 0.25;
+    body.vx = Math.abs(body.vx) * 0.3;
   }
   if (body.x + body.r > w - pad) {
     body.x = w - body.r - pad;
-    body.vx = -Math.abs(body.vx) * 0.25;
+    body.vx = -Math.abs(body.vx) * 0.3;
   }
   if (body.y - body.r < pad) {
     body.y = body.r + pad;
-    body.vy = Math.abs(body.vy) * 0.25;
+    body.vy = Math.abs(body.vy) * 0.3;
   }
   if (body.y + body.r > h - pad) {
     body.y = h - body.r - pad;
-    body.vy = -Math.abs(body.vy) * 0.25;
+    body.vy = -Math.abs(body.vy) * 0.3;
   }
 }
 
@@ -168,14 +174,18 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       }));
   }, [data, width, height, timeFrame]);
 
+  /* ---- refs ---- */
   const bodiesRef = useRef<PhysicsBody[]>([]);
   const gRefs = useRef<(SVGGElement | null)[]>([]);
   const pathRefs = useRef<(SVGPathElement | null)[]>([]);
   const seedsRef = useRef<number[]>([]);
+  const cursorRef = useRef<{ x: number; y: number } | null>(null);
+  const popRef = useRef<number[]>([]);        // timestamp of last click per bubble
+  const svgRef = useRef<SVGSVGElement | null>(null);
   const rafRef = useRef<number>(0);
   const mountedRef = useRef(true);
 
-  // Sync physics bodies + precompute seeds when layout changes
+  /* ---- sync bodies + seeds ---- */
   useEffect(() => {
     const prev = bodiesRef.current;
     const prevMap = new Map<string, PhysicsBody>();
@@ -197,10 +207,25 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
         r: node.r, targetX: node.x, targetY: node.y,
       };
     });
-    seedsRef.current = layoutNodes.map((node) => hashSeed(node.data.id));
+    seedsRef.current = layoutNodes.map((n) => hashSeed(n.data.id));
+    popRef.current = new Array(layoutNodes.length).fill(0);
   }, [layoutNodes]);
 
-  // Animation loop — position + blob morph
+  /* ---- scroll momentum ---- */
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const dy = window.scrollY - lastY;
+      lastY = window.scrollY;
+      for (const body of bodiesRef.current) {
+        body.vy += dy * 0.12;
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  /* ---- animation loop ---- */
   useEffect(() => {
     mountedRef.current = true;
     let frame = 0;
@@ -209,13 +234,33 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       if (!mountedRef.current) return;
       const bodies = bodiesRef.current;
       const seeds = seedsRef.current;
+      const cursor = cursorRef.current;
+      const now = performance.now();
+      const t = now / 1000;
 
-      // Physics step
+      /* --- physics step --- */
       for (const body of bodies) {
+        // spring back to target
         body.vx += (body.targetX - body.x) * SPRING;
         body.vy += (body.targetY - body.y) * SPRING;
+
+        // ambient drift
         body.vx += (Math.random() - 0.5) * DRIFT;
         body.vy += (Math.random() - 0.5) * DRIFT;
+
+        // cursor repulsion
+        if (cursor) {
+          const dx = body.x - cursor.x;
+          const dy = body.y - cursor.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const zone = body.r + CURSOR_RADIUS;
+          if (dist < zone && dist > 0.1) {
+            const strength = (1 - dist / zone) * CURSOR_FORCE;
+            body.vx += (dx / dist) * strength;
+            body.vy += (dy / dist) * strength;
+          }
+        }
+
         body.vx *= DAMPING;
         body.vy *= DAMPING;
         body.x += body.vx;
@@ -224,23 +269,45 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       }
       resolveCollisions(bodies);
 
-      // Blob morph time (slow)
-      const t = performance.now() / 1000;
-
+      /* --- render --- */
       for (let i = 0; i < bodies.length; i++) {
+        const body = bodies[i];
         const el = gRefs.current[i];
-        if (el) {
+        if (!el) continue;
+
+        // squash & stretch based on velocity
+        const speed = Math.sqrt(body.vx * body.vx + body.vy * body.vy);
+        const stretch = Math.min(speed * 0.018, 0.1);
+
+        // pop spring (click feedback)
+        const popElapsed = (now - (popRef.current[i] || 0)) / 1000;
+        const popScale = popRef.current[i]
+          ? 1 + 0.12 * Math.exp(-popElapsed * 8) * Math.cos(popElapsed * 18)
+          : 1;
+
+        if (stretch > 0.004) {
+          const angle = Math.atan2(body.vy, body.vx) * DEG;
+          const sx = ((1 + stretch) * popScale).toFixed(3);
+          const sy = ((1 / (1 + stretch)) * popScale).toFixed(3);
           el.setAttribute(
             "transform",
-            `translate(${bodies[i].x.toFixed(1)},${bodies[i].y.toFixed(1)})`,
+            `translate(${body.x.toFixed(1)},${body.y.toFixed(1)}) rotate(${angle.toFixed(1)}) scale(${sx},${sy}) rotate(${(-angle).toFixed(1)})`,
+          );
+        } else {
+          const s = popScale.toFixed(3);
+          el.setAttribute(
+            "transform",
+            popScale !== 1
+              ? `translate(${body.x.toFixed(1)},${body.y.toFixed(1)}) scale(${s})`
+              : `translate(${body.x.toFixed(1)},${body.y.toFixed(1)})`,
           );
         }
 
-        // Update blob path every 3 frames for performance
-        if (frame % 3 === 0) {
+        // blob morph every 2 frames
+        if (frame % 2 === 0) {
           const pathEl = pathRefs.current[i];
           if (pathEl && seeds[i] !== undefined) {
-            pathEl.setAttribute("d", blobPath(bodies[i].r, seeds[i], t));
+            pathEl.setAttribute("d", blobPath(body.r, seeds[i], t));
           }
         }
       }
@@ -256,13 +323,44 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     };
   }, [width, height]);
 
+  /* ---- pointer tracking (mouse + touch) ---- */
+  const toSVG = useCallback(
+    (clientX: number, clientY: number) => {
+      const svg = svgRef.current;
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      cursorRef.current = {
+        x: (clientX - rect.left) * (width / rect.width),
+        y: (clientY - rect.top) * (height / rect.height),
+      };
+    },
+    [width, height],
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => toSVG(e.clientX, e.clientY),
+    [toSVG],
+  );
+  const handlePointerLeave = useCallback(() => {
+    cursorRef.current = null;
+  }, []);
+
+  /* ---- click with pop ---- */
+  const handleBubbleClick = useCallback(
+    (coin: Coin, index: number) => {
+      popRef.current[index] = performance.now();
+      onSelect(coin);
+    },
+    [onSelect],
+  );
+
+  /* ---- ref setters ---- */
   const setGRef = useCallback(
     (index: number) => (el: SVGGElement | null) => {
       gRefs.current[index] = el;
     },
     [],
   );
-
   const setPathRef = useCallback(
     (index: number) => (el: SVGPathElement | null) => {
       pathRefs.current[index] = el;
@@ -274,10 +372,14 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
 
   return (
     <svg
+      ref={svgRef}
       className="bubble-svg"
       viewBox={`0 0 ${width} ${height}`}
       role="img"
       aria-label="Crypto market bubble chart"
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
+      style={{ touchAction: "pan-y" }}
     >
       <defs>
         <linearGradient id="org-green" x1="0" y1="0" x2="0" y2="1">
@@ -313,7 +415,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
             key={coin.id}
             ref={setGRef(i)}
             transform={`translate(${node.x},${node.y})`}
-            onClick={() => onSelect(coin)}
+            onClick={() => handleBubbleClick(coin, i)}
             className="bubble-node"
             style={{ cursor: "pointer" }}
           >
@@ -326,7 +428,6 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
               <circle r={node.r * 0.85} />
             </clipPath>
 
-            {/* Organic blob — morphs slowly over time */}
             <path
               ref={setPathRef(i)}
               d={blobPath(node.r, seed, 0)}
