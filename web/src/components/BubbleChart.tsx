@@ -29,7 +29,6 @@ type PhysicsBody = {
   targetY: number;
 };
 
-// Physics tuning — gentle drift with tight packing
 const SPRING = 0.004;
 const DAMPING = 0.95;
 const DRIFT = 0.06;
@@ -40,7 +39,6 @@ const WALL_PADDING = 2;
 /*  Organic blob geometry                                              */
 /* ------------------------------------------------------------------ */
 
-/** Deterministic hash → number from a string (for per-coin blob seeds) */
 function hashSeed(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) {
@@ -52,20 +50,21 @@ function hashSeed(s: string): number {
 
 /**
  * Generate an organic blob SVG path centered at (0,0).
- * Uses Catmull-Rom → cubic-Bézier conversion through wobbled
- * control points so each coin gets a unique, slightly
- * asymmetric silhouette.
+ * Each coin gets a unique, slightly asymmetric shape via
+ * Catmull-Rom splines through wobbled control points.
  */
 function blobPath(r: number, seed: number): string {
-  const n = 8;
-  const wobble = r * 0.08;
+  const n = 10; // more points = smoother organic edge
+  const wobble = r * 0.12; // 12% deviation — clearly not a circle
   const pts: [number, number][] = [];
 
   for (let i = 0; i < n; i++) {
     const angle = (Math.PI * 2 * i) / n;
+    // Two overlapping sine/cosine waves for natural irregularity
     const offset =
-      Math.sin(seed * 9.1 + i * 5.7) * wobble +
-      Math.cos(seed * 3.7 + i * 8.3) * wobble * 0.5;
+      Math.sin(seed * 9.1 + i * 4.3) * wobble * 0.7 +
+      Math.cos(seed * 3.7 + i * 7.1) * wobble * 0.5 +
+      Math.sin(seed * 1.3 + i * 11.9) * wobble * 0.3;
     const rr = r + offset;
     pts.push([
       Math.cos(angle) * rr,
@@ -73,7 +72,6 @@ function blobPath(r: number, seed: number): string {
     ]);
   }
 
-  // Catmull-Rom through the ring of points as cubic Bézier curves
   let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
   for (let i = 0; i < n; i++) {
     const p0 = pts[(i - 1 + n) % n];
@@ -92,7 +90,7 @@ function blobPath(r: number, seed: number): string {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Physics helpers                                                    */
+/*  Physics                                                            */
 /* ------------------------------------------------------------------ */
 
 function resolveCollisions(bodies: PhysicsBody[]) {
@@ -183,11 +181,9 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
   useEffect(() => {
     const prev = bodiesRef.current;
     const prevMap = new Map<string, PhysicsBody>();
-
     if (prev.length > 0) {
       prev.forEach((b, i) => prevMap.set(`idx-${i}`, b));
     }
-
     bodiesRef.current = layoutNodes.map((node, i) => {
       const existing = prevMap.get(`idx-${i}`);
       if (existing && Math.abs(existing.targetX - node.x) < node.r * 3) {
@@ -197,24 +193,19 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
         return existing;
       }
       return {
-        x: node.x,
-        y: node.y,
+        x: node.x, y: node.y,
         vx: (Math.random() - 0.5) * 0.2,
         vy: (Math.random() - 0.5) * 0.2,
-        r: node.r,
-        targetX: node.x,
-        targetY: node.y,
+        r: node.r, targetX: node.x, targetY: node.y,
       };
     });
   }, [layoutNodes]);
 
   useEffect(() => {
     mountedRef.current = true;
-
     function tick() {
       if (!mountedRef.current) return;
       const bodies = bodiesRef.current;
-
       for (const body of bodies) {
         body.vx += (body.targetX - body.x) * SPRING;
         body.vy += (body.targetY - body.y) * SPRING;
@@ -226,9 +217,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
         body.y += body.vy;
         containInBounds(body, width, height);
       }
-
       resolveCollisions(bodies);
-
       for (let i = 0; i < bodies.length; i++) {
         const el = gRefs.current[i];
         if (el) {
@@ -238,10 +227,8 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
           );
         }
       }
-
       rafRef.current = requestAnimationFrame(tick);
     }
-
     rafRef.current = requestAnimationFrame(tick);
     return () => {
       mountedRef.current = false;
@@ -266,7 +253,6 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       aria-label="Crypto market bubble chart"
     >
       <defs>
-        {/* Dark, muted palette — subtle top-to-bottom shift */}
         <linearGradient id="org-green" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#22664D" />
           <stop offset="100%" stopColor="#1B4D3E" />
@@ -275,14 +261,6 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
           <stop offset="0%" stopColor="#C93030" />
           <stop offset="100%" stopColor="#B22222" />
         </linearGradient>
-
-        {/* Subtle grain texture overlay */}
-        <filter id="grain" x="0%" y="0%" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" result="noise" />
-          <feColorMatrix in="noise" type="saturate" values="0" result="grey" />
-          <feBlend in="SourceGraphic" in2="grey" mode="soft-light" result="textured" />
-          <feComposite in="textured" in2="SourceGraphic" operator="in" />
-        </filter>
       </defs>
 
       {layoutNodes.map((node, i) => {
@@ -302,7 +280,6 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
         const iconSize = Math.min(node.r * 0.48, 26);
         const fontSizeSymbol = Math.min(node.r * 0.36, 20);
         const fontSizePct = Math.min(node.r * 0.25, 13);
-        const useGrain = node.r > 18;
 
         return (
           <g
@@ -318,20 +295,20 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
               {isHighRisk ? " — higher risk" : ""}
             </title>
 
-            {/* Content clip — regular circle, slightly inset from blob edge */}
+            {/* Clip for content — inset circle so text stays inside blob */}
             <clipPath id={clipId}>
-              <circle r={node.r * 0.9} />
+              <circle r={node.r * 0.85} />
             </clipPath>
 
-            {/* Organic blob shape — unique per coin */}
+            {/* Organic blob background — unique shape per coin */}
             <path
               d={blobPath(node.r, seed)}
               fill={positive ? "url(#org-green)" : "url(#org-red)"}
-              stroke={positive ? "rgba(52,211,153,0.22)" : "rgba(248,113,113,0.22)"}
-              strokeWidth={1.5}
-              filter={useGrain ? "url(#grain)" : undefined}
+              stroke={positive ? "rgba(52,211,153,0.28)" : "rgba(248,113,113,0.28)"}
+              strokeWidth={2}
             />
 
+            {/* Content layer */}
             <g clipPath={`url(#${clipId})`}>
               {showIcon && (
                 <image
