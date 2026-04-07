@@ -150,25 +150,32 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
   const layoutNodes = useMemo(() => {
     if (!width || !height || !data.length) return [] as LayoutNode[];
 
-    // Value per coin for radius sizing
+    // Rank-based sizing: sort coins by magnitude, then map rank to radius.
+    // This guarantees a smooth, consistent size distribution regardless of
+    // whether the timeframe has 0.1% moves or 200% moves.
     const items = data.map((coin) => {
-      let value: number;
-      if (timeFrame === "market_cap") {
-        value = Math.max(4, Math.pow(coin.market_cap ?? 0, 0.42));
-      } else {
-        const change = Math.abs(getChangeForTimeFrame(coin, timeFrame));
-        value = Math.max(3, change);
-      }
-      return { coin, value };
+      const magnitude =
+        timeFrame === "market_cap"
+          ? Math.pow(coin.market_cap ?? 0, 0.42)
+          : Math.abs(getChangeForTimeFrame(coin, timeFrame));
+      return { coin, magnitude };
     });
 
-    const maxVal = Math.max(...items.map((v) => v.value));
-    const minR = 20;
-    const maxR = Math.min(width, height) * 0.09;
+    // Sort descending by magnitude, assign rank 0..n-1
+    const sorted = [...items].sort((a, b) => b.magnitude - a.magnitude);
+    const rankMap = new Map<string, number>();
+    sorted.forEach((item, i) => rankMap.set(item.coin.id, i));
+
+    const n = items.length;
+    const minR = 22;
+    const maxR = Math.min(width, height) * 0.075;
 
     // Random placement using deterministic hash — no grid pattern
     return items.map((v) => {
-      const r = minR + (v.value / maxVal) * (maxR - minR);
+      // rank 0 = biggest mover → largest bubble, rank n-1 = smallest → smallest bubble
+      const rank = rankMap.get(v.coin.id) ?? n - 1;
+      const t = n > 1 ? 1 - rank / (n - 1) : 0.5; // 1 for top, 0 for bottom
+      const r = minR + t * (maxR - minR);
       const seed = hashSeed(v.coin.id);
       // Multiple hash-derived pseudo-random values for x, y
       const hx = ((Math.sin(seed * 7.13) + 1) / 2);       // 0-1
