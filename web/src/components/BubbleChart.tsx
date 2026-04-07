@@ -36,6 +36,65 @@ const DRIFT = 0.06;
 const COLLISION_STRENGTH = 0.5;
 const WALL_PADDING = 2;
 
+/* ------------------------------------------------------------------ */
+/*  Organic blob geometry                                              */
+/* ------------------------------------------------------------------ */
+
+/** Deterministic hash → number from a string (for per-coin blob seeds) */
+function hashSeed(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h) + s.charCodeAt(i);
+    h |= 0;
+  }
+  return h;
+}
+
+/**
+ * Generate an organic blob SVG path centered at (0,0).
+ * Uses Catmull-Rom → cubic-Bézier conversion through wobbled
+ * control points so each coin gets a unique, slightly
+ * asymmetric silhouette.
+ */
+function blobPath(r: number, seed: number): string {
+  const n = 8;
+  const wobble = r * 0.08;
+  const pts: [number, number][] = [];
+
+  for (let i = 0; i < n; i++) {
+    const angle = (Math.PI * 2 * i) / n;
+    const offset =
+      Math.sin(seed * 9.1 + i * 5.7) * wobble +
+      Math.cos(seed * 3.7 + i * 8.3) * wobble * 0.5;
+    const rr = r + offset;
+    pts.push([
+      Math.cos(angle) * rr,
+      Math.sin(angle) * rr,
+    ]);
+  }
+
+  // Catmull-Rom through the ring of points as cubic Bézier curves
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n];
+    const p1 = pts[i];
+    const p2 = pts[(i + 1) % n];
+    const p3 = pts[(i + 2) % n];
+
+    const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+
+    d += `C${cp1x.toFixed(1)},${cp1y.toFixed(1)},${cp2x.toFixed(1)},${cp2y.toFixed(1)},${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+  }
+  return d + "Z";
+}
+
+/* ------------------------------------------------------------------ */
+/*  Physics helpers                                                    */
+/* ------------------------------------------------------------------ */
+
 function resolveCollisions(bodies: PhysicsBody[]) {
   for (let i = 0; i < bodies.length; i++) {
     for (let j = i + 1; j < bodies.length; j++) {
@@ -86,6 +145,10 @@ function containInBounds(body: PhysicsBody, w: number, h: number) {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/*  Component                                                          */
+/* ------------------------------------------------------------------ */
+
 export function BubbleChart({ data, width, height, timeFrame, onSelect }: BubbleChartProps) {
   type PackDatum = Coin & { children?: PackDatum[] };
 
@@ -117,7 +180,6 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
   const rafRef = useRef<number>(0);
   const mountedRef = useRef(true);
 
-  // Sync physics bodies when layout changes
   useEffect(() => {
     const prev = bodiesRef.current;
     const prevMap = new Map<string, PhysicsBody>();
@@ -146,7 +208,6 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     });
   }, [layoutNodes]);
 
-  // Animation loop
   useEffect(() => {
     mountedRef.current = true;
 
@@ -205,15 +266,23 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       aria-label="Crypto market bubble chart"
     >
       <defs>
-        {/* Flat 2D soft gradients — very subtle top-to-bottom tint for organic feel */}
-        <linearGradient id="flat-green" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#4ade80" />
-          <stop offset="100%" stopColor="#22c55e" />
+        {/* Dark, muted palette — subtle top-to-bottom shift */}
+        <linearGradient id="org-green" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#22664D" />
+          <stop offset="100%" stopColor="#1B4D3E" />
         </linearGradient>
-        <linearGradient id="flat-red" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#fb7185" />
-          <stop offset="100%" stopColor="#f43f5e" />
+        <linearGradient id="org-red" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#C93030" />
+          <stop offset="100%" stopColor="#B22222" />
         </linearGradient>
+
+        {/* Subtle grain texture overlay */}
+        <filter id="grain" x="0%" y="0%" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" result="noise" />
+          <feColorMatrix in="noise" type="saturate" values="0" result="grey" />
+          <feBlend in="SourceGraphic" in2="grey" mode="soft-light" result="textured" />
+          <feComposite in="textured" in2="SourceGraphic" operator="in" />
+        </filter>
       </defs>
 
       {layoutNodes.map((node, i) => {
@@ -221,6 +290,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
         const change = getChangeForTimeFrame(coin, timeFrame);
         const positive = change >= 0;
         const clipId = `clip-${coin.id}`;
+        const seed = hashSeed(coin.id);
 
         const isHighRisk =
           (coin.market_cap_rank != null && coin.market_cap_rank > 25) ||
@@ -232,6 +302,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
         const iconSize = Math.min(node.r * 0.48, 26);
         const fontSizeSymbol = Math.min(node.r * 0.36, 20);
         const fontSizePct = Math.min(node.r * 0.25, 13);
+        const useGrain = node.r > 18;
 
         return (
           <g
@@ -247,16 +318,18 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
               {isHighRisk ? " — higher risk" : ""}
             </title>
 
+            {/* Content clip — regular circle, slightly inset from blob edge */}
             <clipPath id={clipId}>
-              <circle r={node.r - 1} />
+              <circle r={node.r * 0.9} />
             </clipPath>
 
-            {/* Flat 2D circle with soft border */}
-            <circle
-              r={node.r}
-              fill={positive ? "url(#flat-green)" : "url(#flat-red)"}
-              stroke={positive ? "rgba(134,239,172,0.3)" : "rgba(253,164,175,0.3)"}
+            {/* Organic blob shape — unique per coin */}
+            <path
+              d={blobPath(node.r, seed)}
+              fill={positive ? "url(#org-green)" : "url(#org-red)"}
+              stroke={positive ? "rgba(52,211,153,0.22)" : "rgba(248,113,113,0.22)"}
               strokeWidth={1.5}
+              filter={useGrain ? "url(#grain)" : undefined}
             />
 
             <g clipPath={`url(#${clipId})`}>
@@ -264,10 +337,10 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
                 <image
                   href={coin.image}
                   x={-iconSize / 2}
-                  y={-node.r * 0.48}
+                  y={-node.r * 0.44}
                   width={iconSize}
                   height={iconSize}
-                  opacity={0.92}
+                  opacity={0.9}
                   style={{ pointerEvents: "none" }}
                 />
               )}
@@ -280,9 +353,9 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
                   fontSize={fontSizeSymbol}
                   y={
                     showIcon
-                      ? fontSizeSymbol * 0.4
+                      ? fontSizeSymbol * 0.45
                       : showPct
-                        ? -fontSizePct * 0.25
+                        ? -fontSizePct * 0.2
                         : fontSizeSymbol * 0.38
                   }
                   style={{ pointerEvents: "none" }}
@@ -294,18 +367,15 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
               {showPct && (
                 <text
                   textAnchor="middle"
-                  fill="#fff"
+                  fill="rgba(255,255,255,0.82)"
                   fontWeight={600}
                   fontSize={fontSizePct}
                   y={
                     showIcon
-                      ? fontSizeSymbol * 0.4 + fontSizePct * 1.25
+                      ? fontSizeSymbol * 0.45 + fontSizePct * 1.3
                       : fontSizePct * 1.15
                   }
-                  style={{
-                    pointerEvents: "none",
-                    opacity: 0.88,
-                  }}
+                  style={{ pointerEvents: "none" }}
                 >
                   {change.toFixed(1)}%
                 </text>
