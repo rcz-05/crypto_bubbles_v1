@@ -253,15 +253,13 @@ export default function HomePage() {
             />
             <div className="board-legend">
               <span className="board-sizing-hint">
-                {timeFrame === "market_cap"
-                  ? "Bubble size = market cap"
-                  : `Bubble size = absolute ${timeFrame} price change`}
+                Bubble size = {timeFrame === "market_cap" ? "market cap rank" : `${timeFrame} movement rank`}
               </span>
               <span className="board-sizing-hint risk-legend">
                 <svg width="14" height="14" viewBox="0 0 14 14" style={{ verticalAlign: "middle", marginRight: 4 }}>
-                  <circle cx="7" cy="7" r="5" fill="none" stroke="#ff9800" strokeWidth="1.5" strokeDasharray="3 2" />
+                  <circle cx="7" cy="7" r="5" fill="none" stroke="#ffab40" strokeWidth="2" strokeDasharray="3 2" />
                 </svg>
-                = higher risk (smaller cap or extreme move)
+                = volatile (low cap or extreme swing)
               </span>
             </div>
           </div>

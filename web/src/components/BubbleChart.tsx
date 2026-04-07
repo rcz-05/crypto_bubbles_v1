@@ -220,6 +220,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
   const bodiesRef = useRef<PhysicsBody[]>([]);
   const gRefs = useRef<(SVGGElement | null)[]>([]);
   const pathRefs = useRef<(SVGPathElement | null)[]>([]);
+  const riskPathRefs = useRef<(SVGPathElement | null)[]>([]);
   const seedsRef = useRef<number[]>([]);
   const cursorRef = useRef<{ x: number; y: number } | null>(null);
   const popRef = useRef<number[]>([]);        // timestamp of last click per bubble
@@ -341,9 +342,12 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
 
         // blob morph every 2 frames
         if (frame % 2 === 0) {
-          const pathEl = pathRefs.current[i];
-          if (pathEl && seeds[i] !== undefined) {
-            pathEl.setAttribute("d", blobPath(body.r, seeds[i], t));
+          const d = seeds[i] !== undefined ? blobPath(body.r, seeds[i], t) : null;
+          if (d) {
+            const pathEl = pathRefs.current[i];
+            if (pathEl) pathEl.setAttribute("d", d);
+            const riskEl = riskPathRefs.current[i];
+            if (riskEl) riskEl.setAttribute("d", d);
           }
         }
       }
@@ -397,6 +401,12 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     },
     [],
   );
+  const setRiskPathRef = useCallback(
+    (index: number) => (el: SVGPathElement | null) => {
+      riskPathRefs.current[index] = el;
+    },
+    [],
+  );
   const setPathRef = useCallback(
     (index: number) => (el: SVGPathElement | null) => {
       pathRefs.current[index] = el;
@@ -436,8 +446,8 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
         const seed = hashSeed(coin.id);
 
         const isHighRisk =
-          (coin.market_cap_rank != null && coin.market_cap_rank > 25) ||
-          Math.abs(change) > 15;
+          (coin.market_cap_rank != null && coin.market_cap_rank > 50) ||
+          Math.abs(change) > 20;
 
         // Medal outline for top 3 gainers / losers
         const medal = medalMap.get(coin.id);
@@ -482,6 +492,18 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
               stroke={medalStroke ?? (positive ? "#2d8a2d" : "#b03a33")}
               strokeWidth={medalStroke ? medalWidth : 2.5}
             />
+
+            {isHighRisk && !medal && (
+              <path
+                ref={setRiskPathRef(i)}
+                d={blobPath(node.r, seed, 0)}
+                fill="none"
+                stroke="#ffab40"
+                strokeWidth={3.5}
+                strokeDasharray="8 4"
+                style={{ pointerEvents: "none" }}
+              />
+            )}
 
             <g clipPath={`url(#${clipId})`}>
               {showIcon && (
