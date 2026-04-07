@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { hierarchy, pack } from "d3-hierarchy";
 import { Coin, TimeFrame, getChangeForTimeFrame } from "@/lib/coingecko";
 
 type BubbleChartProps = {
@@ -149,30 +148,52 @@ function containInBounds(body: PhysicsBody, w: number, h: number) {
 /* ------------------------------------------------------------------ */
 
 export function BubbleChart({ data, width, height, timeFrame, onSelect }: BubbleChartProps) {
-  type PackDatum = Coin & { children?: PackDatum[] };
-
   const layoutNodes = useMemo(() => {
     if (!width || !height || !data.length) return [] as LayoutNode[];
 
-    const root = hierarchy<PackDatum>({ children: data } as PackDatum).sum((d) => {
+    // Calculate a value per coin for radius sizing
+    const items = data.map((coin) => {
+      let value: number;
       if (timeFrame === "market_cap") {
-        return Math.max(4, Math.pow(d.market_cap ?? 0, 0.42));
+        value = Math.max(4, Math.pow(coin.market_cap ?? 0, 0.42));
+      } else {
+        const change = Math.abs(getChangeForTimeFrame(coin, timeFrame));
+        value = Math.max(3, change);
       }
-      const change = Math.abs(getChangeForTimeFrame(d as Coin, timeFrame));
-      // Floor at 3 — small coins get decent size, big movers still stand out
-      return Math.max(3, change);
+      return { coin, value };
     });
 
-    const packer = pack<PackDatum>().size([width, height]).padding(14);
+    const maxVal = Math.max(...items.map((v) => v.value));
+    const minR = 16;
+    const maxR = Math.min(width, height) * 0.085;
 
-    return packer(root)
-      .leaves()
-      .map((leaf) => ({
-        x: leaf.x,
-        y: leaf.y,
-        r: leaf.r,
-        data: leaf.data as Coin,
-      }));
+    // Compute radii
+    const sized = items.map((v) => ({
+      coin: v.coin,
+      r: minR + (v.value / maxVal) * (maxR - minR),
+    }));
+
+    // Distribute across full board in a grid with deterministic jitter
+    const n = sized.length;
+    const cols = Math.ceil(Math.sqrt(n * (width / height)));
+    const rows = Math.ceil(n / cols);
+    const cellW = width / cols;
+    const cellH = height / rows;
+    const pad = 10; // keep away from edges
+
+    return sized.map((item, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const seed = hashSeed(item.coin.id);
+      const jx = Math.sin(seed * 1.7) * cellW * 0.18;
+      const jy = Math.cos(seed * 2.3) * cellH * 0.18;
+      return {
+        x: Math.max(item.r + pad, Math.min(width - item.r - pad, cellW * (col + 0.5) + jx)),
+        y: Math.max(item.r + pad, Math.min(height - item.r - pad, cellH * (row + 0.5) + jy)),
+        r: item.r,
+        data: item.coin,
+      };
+    });
   }, [data, width, height, timeFrame]);
 
   /* ---- refs ---- */
