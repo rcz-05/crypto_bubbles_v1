@@ -9,13 +9,19 @@ type CacheEntry = {
 
 let cache: CacheEntry | null = null;
 
-function normalizeCoin(coin: Partial<Coin> & { id?: string; symbol?: string; name?: string }): Coin {
+function normalizeCoin(coin: Partial<Coin> & Record<string, unknown>): Coin {
   return {
-    id: coin.id ?? "",
-    symbol: coin.symbol ?? "",
-    name: coin.name ?? "",
+    id: (coin.id as string) ?? "",
+    symbol: (coin.symbol as string) ?? "",
+    name: (coin.name as string) ?? "",
     current_price: coin.current_price ?? 0,
     price_change_percentage_24h: coin.price_change_percentage_24h ?? 0,
+    price_change_percentage_1h_in_currency:
+      (coin.price_change_percentage_1h_in_currency as number | null) ?? null,
+    price_change_percentage_7d_in_currency:
+      (coin.price_change_percentage_7d_in_currency as number | null) ?? null,
+    price_change_percentage_30d_in_currency:
+      (coin.price_change_percentage_30d_in_currency as number | null) ?? null,
     market_cap: coin.market_cap ?? 0,
     image: coin.image ?? "",
     market_cap_rank: coin.market_cap_rank ?? null,

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CoinContext } from "@/lib/coin-context";
 import { Coin } from "@/lib/coingecko";
 import { trackEvent } from "@/lib/telemetry";
@@ -119,6 +119,19 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
     return () => controller.abort();
   }, [cacheKey, coin]);
 
+  const stableClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!coin) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") stableClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [coin, stableClose]);
+
   const intradayRange = useMemo(() => {
     if (!coin?.high_24h || !coin.low_24h || coin.low_24h <= 0) {
       return null;
@@ -185,13 +198,20 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
                 <p className="section-label">Why is it moving?</p>
                 <h3>Guided interpretation</h3>
               </div>
-              <span className="context-status">
-                {status === "loading"
-                  ? "Loading context"
-                  : context?.isFallback
-                    ? "Market-data fallback"
-                    : "Curated note"}
-              </span>
+              <div className="context-header-badges">
+                {context?.confidence && status === "ready" ? (
+                  <span className={`confidence-badge ${context.confidence}`}>
+                    {context.confidence === "high" ? "High" : context.confidence === "medium" ? "Medium" : "Low"} confidence
+                  </span>
+                ) : null}
+                <span className="context-status">
+                  {status === "loading"
+                    ? "Loading context"
+                    : context?.isFallback
+                      ? "Market-data fallback"
+                      : "Curated note"}
+                </span>
+              </div>
             </div>
 
             {status === "loading" ? (
@@ -217,6 +237,23 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
                 </div>
               ))}
             </div>
+
+            {context?.reasoning && context.reasoning.length > 0 && status === "ready" ? (
+              <details className="reasoning-trace">
+                <summary>How this interpretation was built</summary>
+                <div className="reasoning-steps">
+                  {context.reasoning.map((step) => (
+                    <div key={step.signal} className="reasoning-step">
+                      <div className="reasoning-signal">
+                        <strong>{step.signal}</strong>
+                        <span className="reasoning-value">{step.value}</span>
+                      </div>
+                      <p className="reasoning-interp">{step.interpretation}</p>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ) : null}
           </section>
 
           <section className="context-card">

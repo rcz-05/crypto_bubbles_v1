@@ -22,6 +22,14 @@ export type SourceLink = {
   kind: "market" | "official" | "research";
 };
 
+export type ConfidenceLevel = "high" | "medium" | "low";
+
+export type ReasoningStep = {
+  signal: string;
+  value: string;
+  interpretation: string;
+};
+
 export type CoinContext = {
   coinId: string;
   symbol: string;
@@ -31,6 +39,8 @@ export type CoinContext = {
   lastUpdated: string;
   isFallback: boolean;
   sourceLinks: SourceLink[];
+  confidence: ConfidenceLevel;
+  reasoning: ReasoningStep[];
 };
 
 function formatPercent(value: number) {
@@ -203,6 +213,87 @@ function buildSummary(coin: Coin, isFallback: boolean) {
   return `${movementFrame} ${prototypeFrame} ${volumeFrame} ${rangeFrame}`;
 }
 
+function buildConfidence(coin: Coin, isFallback: boolean): ConfidenceLevel {
+  let score = 0;
+
+  // Curated fixture is the strongest signal
+  if (!isFallback) score += 3;
+
+  // Data completeness
+  if (coin.total_volume != null && coin.total_volume > 0) score += 1;
+  if (coin.high_24h != null && coin.low_24h != null) score += 1;
+  if (coin.market_cap_rank != null && coin.market_cap_rank <= 25) score += 1;
+
+  if (score >= 5) return "high";
+  if (score >= 2) return "medium";
+  return "low";
+}
+
+function buildReasoning(coin: Coin, isFallback: boolean): ReasoningStep[] {
+  const steps: ReasoningStep[] = [];
+  const absChange = Math.abs(coin.price_change_percentage_24h ?? 0);
+  const rangePercent = getRangePercent(coin);
+  const volumeRatio = getVolumeRatio(coin);
+
+  steps.push({
+    signal: "24h price change",
+    value: `${coin.price_change_percentage_24h >= 0 ? "+" : ""}${coin.price_change_percentage_24h.toFixed(2)}%`,
+    interpretation: absChange >= 8
+      ? "Large move — treat with caution, look for confirming evidence."
+      : absChange >= 4
+        ? "Noticeable move — worth investigating, but not extreme."
+        : "Modest change — the market is relatively calm on this asset.",
+  });
+
+  if (rangePercent != null) {
+    steps.push({
+      signal: "Intraday range",
+      value: `${formatCurrency(coin.low_24h)} – ${formatCurrency(coin.high_24h)} (${rangePercent.toFixed(1)}%)`,
+      interpretation: rangePercent >= 12
+        ? "Wide intraday swing — price has been volatile within the session."
+        : "Moderate range — price action has been relatively contained.",
+    });
+  }
+
+  if (volumeRatio != null) {
+    steps.push({
+      signal: "Volume / market cap",
+      value: `${Math.round(volumeRatio * 100)}%`,
+      interpretation: volumeRatio >= 0.18
+        ? "High turnover relative to size — this coin is attracting active trading attention."
+        : "Measured turnover — trading activity is not unusually elevated.",
+    });
+  }
+
+  if (coin.market_cap_rank != null) {
+    steps.push({
+      signal: "Market cap rank",
+      value: `#${coin.market_cap_rank}`,
+      interpretation: coin.market_cap_rank <= 10
+        ? "Top-tier asset — generally more liquid and better covered by analysts."
+        : coin.market_cap_rank <= 25
+          ? "Mid-cap — reasonable liquidity but can move faster than the largest names."
+          : "Smaller-cap — price can shift on thinner volume and fewer participants.",
+    });
+  }
+
+  if (isFallback) {
+    steps.push({
+      signal: "Context source",
+      value: "Market-data heuristics only",
+      interpretation: "No curated research note is available for this asset. The summary is generated from market data patterns alone.",
+    });
+  } else {
+    steps.push({
+      signal: "Context source",
+      value: "Curated research note",
+      interpretation: "This asset has a hand-reviewed research note that provides richer narrative context.",
+    });
+  }
+
+  return steps;
+}
+
 export function buildCoinContext(coin: Coin): CoinContext {
   const fixture = CONTEXT_FIXTURES[coin.symbol.toLowerCase()];
   const lastUpdated = new Date().toISOString();
@@ -237,5 +328,7 @@ export function buildCoinContext(coin: Coin): CoinContext {
     lastUpdated,
     isFallback,
     sourceLinks: dedupedLinks,
+    confidence: buildConfidence(coin, isFallback),
+    reasoning: buildReasoning(coin, isFallback),
   };
 }

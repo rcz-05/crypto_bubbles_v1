@@ -18,7 +18,7 @@ export default function FavoritesPage() {
           <span className="brand-dot" />
           CoinCanvas
         </div>
-        <div className="topbar-copy">Saved coins for quick re-checking during Sprint 3 tests.</div>
+        <div className="topbar-copy">Saved coins for quick re-checking during testing sessions.</div>
         <div className="controls">
           <Link href="/" className="nav-link">
             Canvas

@@ -2,12 +2,13 @@
 
 import { useMemo } from "react";
 import { hierarchy, pack } from "d3-hierarchy";
-import { Coin } from "@/lib/coingecko";
+import { Coin, TimeFrame, getChangeForTimeFrame } from "@/lib/coingecko";
 
 type BubbleChartProps = {
   data: Coin[];
   width: number;
   height: number;
+  timeFrame: TimeFrame;
   onSelect: (coin: Coin) => void;
 };
 
@@ -18,17 +19,21 @@ type Node = {
   data: Coin;
 };
 
-export function BubbleChart({ data, width, height, onSelect }: BubbleChartProps) {
+export function BubbleChart({ data, width, height, timeFrame, onSelect }: BubbleChartProps) {
   type PackDatum = Coin & { children?: PackDatum[] };
 
   const nodes = useMemo(() => {
     if (!width || !height || !data.length) return [] as Node[];
 
-    const root = hierarchy<PackDatum>({ children: data } as PackDatum).sum((d) =>
-      Math.max(1, d.market_cap ?? 0),
-    );
+    const root = hierarchy<PackDatum>({ children: data } as PackDatum).sum((d) => {
+      if (timeFrame === "market_cap") {
+        return Math.max(1, d.market_cap ?? 0);
+      }
+      // Size by absolute % change in selected window — makes fast movers visible
+      const change = Math.abs(getChangeForTimeFrame(d as Coin, timeFrame));
+      return Math.max(0.1, change);
+    });
 
-    // Tighter padding for denser look
     const packer = pack<PackDatum>().size([width, height]).padding(1.5);
 
     return packer(root)
@@ -39,7 +44,7 @@ export function BubbleChart({ data, width, height, onSelect }: BubbleChartProps)
         r: leaf.r,
         data: leaf.data as Coin,
       }));
-  }, [data, width, height]);
+  }, [data, width, height, timeFrame]);
 
   return (
     <svg
@@ -71,15 +76,23 @@ export function BubbleChart({ data, width, height, onSelect }: BubbleChartProps)
 
       {nodes.map((node, i) => {
         const coin = node.data;
-        const positive = (coin.price_change_percentage_24h ?? 0) >= 0;
+        const change = getChangeForTimeFrame(coin, timeFrame);
+        const positive = change >= 0;
         const strokeColor = positive ? "#00e676" : "#ff5252";
+        const clipId = `clip-${coin.id}`;
 
-        // Hierarchy logic
-        const showIcon = node.r > 28;
-        const showPct = node.r > 16;
-        const iconSize = node.r * 0.6;
-        const fontSizeSymbol = Math.min(node.r * 0.4, 24);
-        const fontSizePct = Math.min(node.r * 0.3, 16);
+        // Risk tier: coins outside top-25 or with extreme moves get a visual warning
+        const isHighRisk =
+          (coin.market_cap_rank != null && coin.market_cap_rank > 25) ||
+          Math.abs(change) > 15;
+
+        // Tiered visibility: hide labels entirely for very small bubbles
+        const showSymbol = node.r > 10;
+        const showIcon = node.r > 32;
+        const showPct = node.r > 22;
+        const iconSize = Math.min(node.r * 0.5, 28);
+        const fontSizeSymbol = Math.min(node.r * 0.38, 22);
+        const fontSizePct = Math.min(node.r * 0.26, 14);
 
         return (
           <g
@@ -95,8 +108,23 @@ export function BubbleChart({ data, width, height, onSelect }: BubbleChartProps)
             }}
           >
             <title>
-              {coin.name}: {(coin.price_change_percentage_24h ?? 0).toFixed(2)}% over 24h
+              {coin.name}: {change.toFixed(2)}% ({timeFrame}){isHighRisk ? " — higher risk" : ""}
             </title>
+
+            <clipPath id={clipId}>
+              <circle r={node.r * 0.92} />
+            </clipPath>
+
+            {isHighRisk && node.r > 12 && (
+              <circle
+                r={node.r + 3}
+                fill="none"
+                stroke="#ff9800"
+                strokeWidth={1.5}
+                strokeDasharray="4 3"
+                strokeOpacity={0.6}
+              />
+            )}
 
             <circle
               r={node.r}
@@ -112,45 +140,49 @@ export function BubbleChart({ data, width, height, onSelect }: BubbleChartProps)
               opacity={0.6}
             />
 
-            {showIcon && (
-              <image
-                href={coin.image}
-                x={-iconSize / 2}
-                y={-iconSize * 1.2}
-                width={iconSize}
-                height={iconSize}
-                opacity={0.8}
-                style={{ pointerEvents: "none" }}
-              />
-            )}
+            <g clipPath={`url(#${clipId})`}>
+              {showIcon && (
+                <image
+                  href={coin.image}
+                  x={-iconSize / 2}
+                  y={-node.r * 0.55}
+                  width={iconSize}
+                  height={iconSize}
+                  opacity={0.8}
+                  style={{ pointerEvents: "none" }}
+                />
+              )}
 
-            <text
-              textAnchor="middle"
-              fill="#fff"
-              fontWeight={800}
-              fontSize={fontSizeSymbol}
-              y={showIcon ? iconSize * 0.1 : -fontSizeSymbol * 0.2}
-              style={{ pointerEvents: "none", textShadow: "0 2px 4px rgba(0,0,0,0.5)" }}
-            >
-              {coin.symbol.toUpperCase()}
-            </text>
+              {showSymbol && (
+                <text
+                  textAnchor="middle"
+                  fill="#fff"
+                  fontWeight={800}
+                  fontSize={fontSizeSymbol}
+                  y={showIcon ? fontSizeSymbol * 0.35 : showPct ? -fontSizePct * 0.3 : fontSizeSymbol * 0.35}
+                  style={{ pointerEvents: "none", textShadow: "0 2px 4px rgba(0,0,0,0.5)" }}
+                >
+                  {coin.symbol.toUpperCase()}
+                </text>
+              )}
 
-            {showPct && (
-              <text
-                textAnchor="middle"
-                fill="#fff"
-                fontWeight={500}
-                fontSize={fontSizePct}
-                y={showIcon ? iconSize * 0.1 + fontSizeSymbol : fontSizeSymbol * 1.0}
-                style={{
-                  pointerEvents: "none",
-                  opacity: 0.9,
-                  textShadow: "0 1px 2px rgba(0,0,0,0.5)",
-                }}
-              >
-                {(coin.price_change_percentage_24h ?? 0).toFixed(1)}%
-              </text>
-            )}
+              {showPct && (
+                <text
+                  textAnchor="middle"
+                  fill="#fff"
+                  fontWeight={500}
+                  fontSize={fontSizePct}
+                  y={showIcon ? fontSizeSymbol * 0.35 + fontSizePct * 1.2 : fontSizePct * 1.1}
+                  style={{
+                    pointerEvents: "none",
+                    opacity: 0.85,
+                    textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+                  }}
+                >
+                  {change.toFixed(1)}%
+                </text>
+              )}
+            </g>
           </g>
         );
       })}

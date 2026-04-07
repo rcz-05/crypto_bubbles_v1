@@ -8,8 +8,18 @@ import { useMarketStore } from "@/store/market";
 import { useFavoritesStore } from "@/store/favorites";
 import { useMeasure } from "@/hooks/useMeasure";
 import { useShakeRefresh, requestMotionPermission } from "@/hooks/useShakeRefresh";
-import { Coin } from "@/lib/coingecko";
+import { Coin, TimeFrame, getChangeForTimeFrame } from "@/lib/coingecko";
+import { HeaderTabs } from "@/components/HeaderTabs";
+import { OnboardingOverlay } from "@/components/OnboardingOverlay";
 import { trackEvent } from "@/lib/telemetry";
+
+const TIME_FRAME_OPTIONS: { label: string; value: TimeFrame }[] = [
+  { label: "1H", value: "1h" },
+  { label: "24H", value: "24h" },
+  { label: "7D", value: "7d" },
+  { label: "30D", value: "30d" },
+  { label: "Market Cap", value: "market_cap" },
+];
 
 function formatCompact(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -19,7 +29,7 @@ function formatCompact(value: number) {
 }
 
 export default function HomePage() {
-  const { coins, status, error, fetchCoins, lastUpdated } = useMarketStore();
+  const { coins, status, error, fetchCoins, lastUpdated, timeFrame, setTimeFrame } = useMarketStore();
   const { favorites, load, add, remove, isFavorite } = useFavoritesStore();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Coin | null>(null);
@@ -94,17 +104,17 @@ export default function HomePage() {
       };
     }
 
-    const winners = coins.filter((coin) => (coin.price_change_percentage_24h ?? 0) >= 0).length;
+    const winners = coins.filter((coin) => getChangeForTimeFrame(coin, timeFrame) >= 0).length;
     const losers = coins.length - winners;
     const topWinner = [...coins].sort(
-      (a, b) => (b.price_change_percentage_24h ?? 0) - (a.price_change_percentage_24h ?? 0),
+      (a, b) => getChangeForTimeFrame(b, timeFrame) - getChangeForTimeFrame(a, timeFrame),
     )[0];
     const topLoser = [...coins].sort(
-      (a, b) => (a.price_change_percentage_24h ?? 0) - (b.price_change_percentage_24h ?? 0),
+      (a, b) => getChangeForTimeFrame(a, timeFrame) - getChangeForTimeFrame(b, timeFrame),
     )[0];
 
     return { winners, losers, topWinner, topLoser };
-  }, [coins]);
+  }, [coins, timeFrame]);
 
   const lastUpdatedLabel = lastUpdated
     ? new Date(lastUpdated).toLocaleTimeString([], {
@@ -139,14 +149,14 @@ export default function HomePage() {
       <main className="page-wrap home-page">
         <section className="hero-grid">
           <div className="hero-panel">
-            <p className="hero-kicker">Sprint 3 learning prototype</p>
+            <p className="hero-kicker">Sprint 4 learning prototype</p>
             <h1>Understand a fast mover without leaving the board.</h1>
             <p className="hero-copy">
               CoinCanvas keeps the bubble scan, then adds a beginner-friendly explanation,
               evidence cards, and simple guardrails the moment curiosity hits.
             </p>
             <div className="chip-row">
-              <span className="chip active">24h movers</span>
+              <span className="chip active">Multi-timeframe scanning</span>
               <span className="chip">Guided context modal</span>
               <span className="chip">No paid APIs required</span>
             </div>
@@ -168,19 +178,19 @@ export default function HomePage() {
 
             <div className="metric-grid">
               <div className="metric-card">
-                <span className="metric-label">Up on the day</span>
+                <span className="metric-label">Up ({timeFrame})</span>
                 <strong>{marketMood.winners}</strong>
               </div>
               <div className="metric-card">
-                <span className="metric-label">Down on the day</span>
+                <span className="metric-label">Down ({timeFrame})</span>
                 <strong>{marketMood.losers}</strong>
               </div>
               <div className="metric-card">
-                <span className="metric-label">Top winner</span>
+                <span className="metric-label">Top winner ({timeFrame})</span>
                 <strong>{marketMood.topWinner?.symbol.toUpperCase() ?? "—"}</strong>
                 <span className="metric-meta">
                   {marketMood.topWinner
-                    ? `${marketMood.topWinner.price_change_percentage_24h.toFixed(1)}%`
+                    ? `${getChangeForTimeFrame(marketMood.topWinner, timeFrame).toFixed(1)}%`
                     : "Loading"}
                 </span>
               </div>
@@ -225,6 +235,37 @@ export default function HomePage() {
             </div>
           </div>
 
+          <div className="board-controls">
+            <HeaderTabs
+              options={TIME_FRAME_OPTIONS.map((o) => o.label)}
+              active={TIME_FRAME_OPTIONS.find((o) => o.value === timeFrame)?.label ?? "24H"}
+              onChange={(label) => {
+                const match = TIME_FRAME_OPTIONS.find((o) => o.label === label);
+                if (match && match.value !== timeFrame) {
+                  trackEvent({
+                    type: "timeframe_changed",
+                    recordedAt: new Date().toISOString(),
+                    payload: { from: timeFrame, to: match.value },
+                  });
+                  setTimeFrame(match.value);
+                }
+              }}
+            />
+            <div className="board-legend">
+              <span className="board-sizing-hint">
+                {timeFrame === "market_cap"
+                  ? "Bubble size = market cap"
+                  : `Bubble size = absolute ${timeFrame} price change`}
+              </span>
+              <span className="board-sizing-hint risk-legend">
+                <svg width="14" height="14" viewBox="0 0 14 14" style={{ verticalAlign: "middle", marginRight: 4 }}>
+                  <circle cx="7" cy="7" r="5" fill="none" stroke="#ff9800" strokeWidth="1.5" strokeDasharray="3 2" />
+                </svg>
+                = higher risk (smaller cap or extreme move)
+              </span>
+            </div>
+          </div>
+
           <div ref={ref} className="board">
           {filtered.length === 0 && status !== "loading" ? (
             <div className="ghost">No coins match that search.</div>
@@ -234,6 +275,7 @@ export default function HomePage() {
             data={filtered}
             width={drawWidth}
             height={drawHeight}
+            timeFrame={timeFrame}
             onSelect={handleSelect}
           />
 
@@ -245,11 +287,11 @@ export default function HomePage() {
         </div>
 
         <div className="status-bar">
-            <span>Focused on truthful 24h scanning only.</span>
+            <span>Bubble sizing: {timeFrame === "market_cap" ? "market cap" : `${timeFrame} movement magnitude`}.</span>
             <span>Context cards load on demand.</span>
             {marketMood.topLoser ? (
               <span>
-                Watch {marketMood.topLoser.symbol.toUpperCase()} {marketMood.topLoser.price_change_percentage_24h.toFixed(1)}%
+                Watch {marketMood.topLoser.symbol.toUpperCase()} {getChangeForTimeFrame(marketMood.topLoser, timeFrame).toFixed(1)}%
               </span>
             ) : null}
             {error ? <span className="status-error">{error}</span> : null}
@@ -264,6 +306,8 @@ export default function HomePage() {
         onToggleFavorite={toggleFavorite}
         isFavorite={isFavorite}
       />
+
+      <OnboardingOverlay />
     </div>
   );
 }

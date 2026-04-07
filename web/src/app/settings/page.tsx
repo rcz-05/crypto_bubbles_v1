@@ -9,6 +9,7 @@ import {
   loadTelemetry,
   TelemetryEvent,
 } from "@/lib/telemetry";
+import { resetOnboarding } from "@/components/OnboardingOverlay";
 
 export default function SettingsPage() {
   const [events, setEvents] = useState<TelemetryEvent[]>(() => loadTelemetry());
@@ -22,6 +23,8 @@ export default function SettingsPage() {
     );
     const sourceClicks = events.filter((event) => event.type === "source_opened").length;
     const modalOpens = events.filter((event) => event.type === "modal_opened").length;
+    const timeframeChanges = events.filter((event) => event.type === "timeframe_changed").length;
+    const uniqueSessions = new Set(events.map((e) => e.sessionId)).size;
     const avgTime =
       contextLoads.length > 0
         ? Math.round(
@@ -34,6 +37,8 @@ export default function SettingsPage() {
       modalOpens,
       contextLoads: contextLoads.length,
       sourceClicks,
+      timeframeChanges,
+      uniqueSessions,
       avgTime,
     };
   }, [events]);
@@ -43,7 +48,7 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = "coincanvas-sprint3-telemetry.json";
+    anchor.download = "coincanvas-telemetry.json";
     anchor.click();
     URL.revokeObjectURL(url);
     setDownloadState("done");
@@ -62,7 +67,7 @@ export default function SettingsPage() {
           <span className="brand-dot" />
           SETTINGS
         </div>
-        <div className="topbar-copy">Sprint 3 sources, instrumentation, and export tools.</div>
+        <div className="topbar-copy">Sources, instrumentation, and export tools.</div>
         <div className="controls">
           <Link href="/" className="nav-link">
             Canvas
@@ -80,7 +85,7 @@ export default function SettingsPage() {
         <section className="hero-grid compact">
           <div className="hero-panel">
             <p className="hero-kicker">Testing operations</p>
-            <h1>Export raw interaction data for the Sprint 3 notebook.</h1>
+            <h1>Export raw interaction data for the project notebook.</h1>
             <p className="hero-copy">
               This page keeps the learning prototype honest: context is deterministic,
               market data is verified, and every key user action can be exported as raw JSON.
@@ -101,8 +106,16 @@ export default function SettingsPage() {
                 <strong>{summary.sourceClicks}</strong>
               </div>
               <div className="metric-card">
+                <span className="metric-label">Timeframe changes</span>
+                <strong>{summary.timeframeChanges}</strong>
+              </div>
+              <div className="metric-card">
                 <span className="metric-label">Avg. time to context</span>
                 <strong>{summary.avgTime ? `${summary.avgTime}ms` : "—"}</strong>
+              </div>
+              <div className="metric-card">
+                <span className="metric-label">Unique sessions</span>
+                <strong>{summary.uniqueSessions}</strong>
               </div>
               <div className="metric-card">
                 <span className="metric-label">Saved favorites</span>
@@ -150,8 +163,9 @@ export default function SettingsPage() {
             <div>
               <div style={{ fontWeight: 700 }}>Export raw data</div>
               <div style={{ color: "var(--muted)" }}>
-                Download `coincanvas-sprint3-telemetry.json` with modal opens, context load
-                timing, fallback usage, source clicks, and favorite actions.
+                Download `coincanvas-telemetry.json` with modal opens, context load
+                timing, fallback usage, source clicks, timeframe changes, session IDs,
+                and favorite actions.
               </div>
             </div>
             <button className="refresh-btn" onClick={handleDownload}>
@@ -163,12 +177,25 @@ export default function SettingsPage() {
             <div>
               <div style={{ fontWeight: 700 }}>Reset local evidence</div>
               <div style={{ color: "var(--muted)" }}>
-                Clear the current Sprint 3 interaction dataset before the next moderated
+                Clear the current interaction dataset before the next moderated
                 testing session.
               </div>
             </div>
             <button className="refresh-btn secondary" onClick={handleClear}>
               Clear telemetry
+            </button>
+          </div>
+
+          <div className="list-card">
+            <div>
+              <div style={{ fontWeight: 700 }}>Replay onboarding</div>
+              <div style={{ color: "var(--muted)" }}>
+                Reset the first-visit guide so it shows again on the next visit to the
+                bubble board. Useful for testing the onboarding flow with new participants.
+              </div>
+            </div>
+            <button className="refresh-btn secondary" onClick={() => { resetOnboarding(); window.location.href = "/"; }}>
+              Reset &amp; go to board
             </button>
           </div>
 

@@ -1,13 +1,15 @@
 "use client";
 
 import { create } from "zustand";
-import { Coin, fetchMarketData } from "@/lib/coingecko";
+import { Coin, TimeFrame, fetchMarketData } from "@/lib/coingecko";
 
 type MarketState = {
   coins: Coin[];
   status: "idle" | "loading" | "error";
   error?: string;
   lastUpdated?: number;
+  timeFrame: TimeFrame;
+  setTimeFrame: (tf: TimeFrame) => void;
   fetchCoins: () => Promise<void>;
 };
 
@@ -16,6 +18,8 @@ export const useMarketStore = create<MarketState>((set) => ({
   status: "idle",
   error: undefined,
   lastUpdated: undefined,
+  timeFrame: "24h",
+  setTimeFrame: (tf) => set({ timeFrame: tf }),
   fetchCoins: async () => {
     set({ status: "loading", error: undefined });
     try {
