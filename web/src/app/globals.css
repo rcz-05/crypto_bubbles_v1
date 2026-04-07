@@ -456,10 +456,9 @@ button {
   border-radius: 26px;
   overflow: hidden;
   background:
-    radial-gradient(circle at top, rgba(67, 93, 108, 0.42), transparent 42%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.16)),
-    #0f171b;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+    radial-gradient(ellipse at 50% 50%, rgba(30, 41, 59, 0.5) 0%, transparent 70%),
+    linear-gradient(180deg, #111827 0%, #0a0f1a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .bubble-svg {
@@ -471,11 +470,11 @@ button {
 .bubble-node {
   transform-box: fill-box;
   transform-origin: center;
-  transition: filter 180ms ease;
+  transition: opacity 160ms ease;
 }
 
 .bubble-node:hover {
-  filter: brightness(1.15) drop-shadow(0 0 8px rgba(255,255,255,0.15));
+  opacity: 0.88;
 }
 
 .board-overlay,

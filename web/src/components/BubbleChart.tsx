@@ -29,12 +29,12 @@ type PhysicsBody = {
   targetY: number;
 };
 
-// --- Physics constants ---
-const SPRING = 0.003;
-const DAMPING = 0.96;
-const DRIFT = 0.08;
-const COLLISION_STRENGTH = 0.4;
-const WALL_PADDING = 4;
+// Physics tuning — gentle drift with tight packing
+const SPRING = 0.004;
+const DAMPING = 0.95;
+const DRIFT = 0.06;
+const COLLISION_STRENGTH = 0.5;
+const WALL_PADDING = 2;
 
 function resolveCollisions(bodies: PhysicsBody[]) {
   for (let i = 0; i < bodies.length; i++) {
@@ -44,9 +44,9 @@ function resolveCollisions(bodies: PhysicsBody[]) {
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const minDist = a.r + b.r + 1.5;
+      const minDist = a.r + b.r + 1;
 
-      if (dist < minDist && dist > 0) {
+      if (dist < minDist && dist > 0.01) {
         const overlap = (minDist - dist) * 0.5 * COLLISION_STRENGTH;
         const nx = dx / dist;
         const ny = dy / dist;
@@ -55,9 +55,8 @@ function resolveCollisions(bodies: PhysicsBody[]) {
         b.x += nx * overlap;
         b.y += ny * overlap;
 
-        // Transfer a small amount of velocity
-        const dvx = (b.vx - a.vx) * 0.15;
-        const dvy = (b.vy - a.vy) * 0.15;
+        const dvx = (b.vx - a.vx) * 0.12;
+        const dvy = (b.vy - a.vy) * 0.12;
         a.vx += dvx;
         a.vy += dvy;
         b.vx -= dvx;
@@ -68,21 +67,22 @@ function resolveCollisions(bodies: PhysicsBody[]) {
 }
 
 function containInBounds(body: PhysicsBody, w: number, h: number) {
-  if (body.x - body.r < WALL_PADDING) {
-    body.x = body.r + WALL_PADDING;
-    body.vx = Math.abs(body.vx) * 0.3;
+  const pad = WALL_PADDING;
+  if (body.x - body.r < pad) {
+    body.x = body.r + pad;
+    body.vx = Math.abs(body.vx) * 0.25;
   }
-  if (body.x + body.r > w - WALL_PADDING) {
-    body.x = w - body.r - WALL_PADDING;
-    body.vx = -Math.abs(body.vx) * 0.3;
+  if (body.x + body.r > w - pad) {
+    body.x = w - body.r - pad;
+    body.vx = -Math.abs(body.vx) * 0.25;
   }
-  if (body.y - body.r < WALL_PADDING) {
-    body.y = body.r + WALL_PADDING;
-    body.vy = Math.abs(body.vy) * 0.3;
+  if (body.y - body.r < pad) {
+    body.y = body.r + pad;
+    body.vy = Math.abs(body.vy) * 0.25;
   }
-  if (body.y + body.r > h - WALL_PADDING) {
-    body.y = h - body.r - WALL_PADDING;
-    body.vy = -Math.abs(body.vy) * 0.3;
+  if (body.y + body.r > h - pad) {
+    body.y = h - body.r - pad;
+    body.vy = -Math.abs(body.vy) * 0.25;
   }
 }
 
@@ -100,7 +100,8 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       return Math.max(0.1, change);
     });
 
-    const packer = pack<PackDatum>().size([width, height]).padding(2);
+    // Tight packing — minimal padding for the crypto bubbles look
+    const packer = pack<PackDatum>().size([width, height]).padding(1);
 
     return packer(root)
       .leaves()
@@ -121,20 +122,14 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
   useEffect(() => {
     const prev = bodiesRef.current;
     const prevMap = new Map<string, PhysicsBody>();
-    const prevLayoutLen = prev.length;
 
-    // Index previous bodies by coin id if they exist at same index
-    if (prevLayoutLen > 0) {
-      // We'll try to match by position heuristic
-      prev.forEach((b, i) => {
-        prevMap.set(`idx-${i}`, b);
-      });
+    if (prev.length > 0) {
+      prev.forEach((b, i) => prevMap.set(`idx-${i}`, b));
     }
 
     bodiesRef.current = layoutNodes.map((node, i) => {
       const existing = prevMap.get(`idx-${i}`);
       if (existing && Math.abs(existing.targetX - node.x) < node.r * 3) {
-        // Keep current animated position but update target
         existing.targetX = node.x;
         existing.targetY = node.y;
         existing.r = node.r;
@@ -143,8 +138,8 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       return {
         x: node.x,
         y: node.y,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
+        vx: (Math.random() - 0.5) * 0.2,
+        vy: (Math.random() - 0.5) * 0.2,
         r: node.r,
         targetX: node.x,
         targetY: node.y,
@@ -152,7 +147,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     });
   }, [layoutNodes]);
 
-  // Animation loop — updates DOM directly, no React re-renders
+  // Animation loop
   useEffect(() => {
     mountedRef.current = true;
 
@@ -161,31 +156,26 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       const bodies = bodiesRef.current;
 
       for (const body of bodies) {
-        // Spring toward layout target
         body.vx += (body.targetX - body.x) * SPRING;
         body.vy += (body.targetY - body.y) * SPRING;
-
-        // Random drift
         body.vx += (Math.random() - 0.5) * DRIFT;
         body.vy += (Math.random() - 0.5) * DRIFT;
-
-        // Damping
         body.vx *= DAMPING;
         body.vy *= DAMPING;
-
         body.x += body.vx;
         body.y += body.vy;
-
         containInBounds(body, width, height);
       }
 
       resolveCollisions(bodies);
 
-      // Write transforms directly to DOM
       for (let i = 0; i < bodies.length; i++) {
         const el = gRefs.current[i];
         if (el) {
-          el.setAttribute("transform", `translate(${bodies[i].x.toFixed(1)},${bodies[i].y.toFixed(1)})`);
+          el.setAttribute(
+            "transform",
+            `translate(${bodies[i].x.toFixed(1)},${bodies[i].y.toFixed(1)})`,
+          );
         }
       }
 
@@ -193,7 +183,6 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     }
 
     rafRef.current = requestAnimationFrame(tick);
-
     return () => {
       mountedRef.current = false;
       cancelAnimationFrame(rafRef.current);
@@ -217,32 +206,47 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       aria-label="Crypto market bubble chart"
     >
       <defs>
-        {/* Modern green gradient — solid, saturated */}
-        <radialGradient id="fill-pos" cx="40%" cy="35%" r="65%">
-          <stop offset="0%" stopColor="#34d399" />
-          <stop offset="100%" stopColor="#059669" />
-        </radialGradient>
-        <radialGradient id="fill-neg" cx="40%" cy="35%" r="65%">
-          <stop offset="0%" stopColor="#fb7185" />
-          <stop offset="100%" stopColor="#e11d48" />
-        </radialGradient>
-
-        {/* Highlight for depth — a subtle bright spot */}
-        <radialGradient id="highlight" cx="35%" cy="25%" r="50%">
-          <stop offset="0%" stopColor="#fff" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+        {/*
+          3D sphere gradients — offset hotspot creates the "lit ball" effect.
+          Inspired by crypto-bubbles.net visual style.
+        */}
+        <radialGradient id="sphere-green" cx="38%" cy="32%" r="65%" fx="38%" fy="32%">
+          <stop offset="0%" stopColor="#a7f3d0" />
+          <stop offset="30%" stopColor="#34d399" />
+          <stop offset="70%" stopColor="#10b981" />
+          <stop offset="100%" stopColor="#065f46" />
         </radialGradient>
 
-        {/* Soft drop shadow */}
-        <filter id="bubble-shadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#000" floodOpacity="0.3" />
+        <radialGradient id="sphere-red" cx="38%" cy="32%" r="65%" fx="38%" fy="32%">
+          <stop offset="0%" stopColor="#fecdd3" />
+          <stop offset="30%" stopColor="#fb7185" />
+          <stop offset="70%" stopColor="#f43f5e" />
+          <stop offset="100%" stopColor="#9f1239" />
+        </radialGradient>
+
+        {/* Colored glow filters for ambient light bleed */}
+        <filter id="glow-green" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+          <feColorMatrix
+            in="blur"
+            type="matrix"
+            values="0 0 0 0 0.2  0 0 0 0 0.8  0 0 0 0 0.5  0 0 0 0.35 0"
+            result="glow"
+          />
+          <feMerge>
+            <feMergeNode in="glow" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
         </filter>
 
-        {/* Risk glow */}
-        <filter id="risk-glow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feFlood floodColor="#f59e0b" floodOpacity="0.4" result="color" />
-          <feComposite in="color" in2="blur" operator="in" result="glow" />
+        <filter id="glow-red" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+          <feColorMatrix
+            in="blur"
+            type="matrix"
+            values="0 0 0 0 0.9  0 0 0 0 0.25  0 0 0 0 0.35  0 0 0 0.35 0"
+            result="glow"
+          />
           <feMerge>
             <feMergeNode in="glow" />
             <feMergeNode in="SourceGraphic" />
@@ -260,12 +264,15 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
           (coin.market_cap_rank != null && coin.market_cap_rank > 25) ||
           Math.abs(change) > 15;
 
-        const showSymbol = node.r > 10;
-        const showIcon = node.r > 32;
-        const showPct = node.r > 22;
-        const iconSize = Math.min(node.r * 0.5, 28);
-        const fontSizeSymbol = Math.min(node.r * 0.38, 22);
-        const fontSizePct = Math.min(node.r * 0.26, 14);
+        // Only apply expensive glow filter on larger bubbles for performance
+        const useGlow = node.r > 14;
+
+        const showSymbol = node.r > 8;
+        const showIcon = node.r > 30;
+        const showPct = node.r > 20;
+        const iconSize = Math.min(node.r * 0.48, 26);
+        const fontSizeSymbol = Math.min(node.r * 0.36, 20);
+        const fontSizePct = Math.min(node.r * 0.25, 13);
 
         return (
           <g
@@ -275,33 +282,21 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
             onClick={() => onSelect(coin)}
             className="bubble-node"
             style={{ cursor: "pointer" }}
-            filter={isHighRisk && node.r > 14 ? "url(#risk-glow)" : undefined}
+            filter={useGlow ? (positive ? "url(#glow-green)" : "url(#glow-red)") : undefined}
           >
             <title>
-              {coin.name}: {change.toFixed(2)}% ({timeFrame}){isHighRisk ? " — higher risk" : ""}
+              {coin.name}: {change.toFixed(2)}% ({timeFrame})
+              {isHighRisk ? " — higher risk" : ""}
             </title>
 
             <clipPath id={clipId}>
               <circle r={node.r - 1} />
             </clipPath>
 
-            {/* Main filled bubble */}
+            {/* Main sphere — 3D lit ball */}
             <circle
               r={node.r}
-              fill={positive ? "url(#fill-pos)" : "url(#fill-neg)"}
-              filter="url(#bubble-shadow)"
-            />
-
-            {/* Highlight for subtle 3D depth */}
-            <circle r={node.r} fill="url(#highlight)" />
-
-            {/* Thin border ring */}
-            <circle
-              r={node.r - 0.5}
-              fill="none"
-              stroke={positive ? "#6ee7b7" : "#fda4af"}
-              strokeWidth={1}
-              strokeOpacity={0.3}
+              fill={positive ? "url(#sphere-green)" : "url(#sphere-red)"}
             />
 
             <g clipPath={`url(#${clipId})`}>
@@ -309,10 +304,10 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
                 <image
                   href={coin.image}
                   x={-iconSize / 2}
-                  y={-node.r * 0.52}
+                  y={-node.r * 0.48}
                   width={iconSize}
                   height={iconSize}
-                  opacity={0.9}
+                  opacity={0.92}
                   style={{ pointerEvents: "none" }}
                 />
               )}
@@ -323,8 +318,17 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
                   fill="#fff"
                   fontWeight={700}
                   fontSize={fontSizeSymbol}
-                  y={showIcon ? fontSizeSymbol * 0.35 : showPct ? -fontSizePct * 0.3 : fontSizeSymbol * 0.35}
-                  style={{ pointerEvents: "none" }}
+                  y={
+                    showIcon
+                      ? fontSizeSymbol * 0.4
+                      : showPct
+                        ? -fontSizePct * 0.25
+                        : fontSizeSymbol * 0.38
+                  }
+                  style={{
+                    pointerEvents: "none",
+                    textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+                  }}
                 >
                   {coin.symbol.toUpperCase()}
                 </text>
@@ -334,10 +338,18 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
                 <text
                   textAnchor="middle"
                   fill="#fff"
-                  fontWeight={500}
+                  fontWeight={600}
                   fontSize={fontSizePct}
-                  y={showIcon ? fontSizeSymbol * 0.35 + fontSizePct * 1.2 : fontSizePct * 1.1}
-                  style={{ pointerEvents: "none", opacity: 0.9 }}
+                  y={
+                    showIcon
+                      ? fontSizeSymbol * 0.4 + fontSizePct * 1.25
+                      : fontSizePct * 1.15
+                  }
+                  style={{
+                    pointerEvents: "none",
+                    opacity: 0.92,
+                    textShadow: "0 1px 2px rgba(0,0,0,0.4)",
+                  }}
                 >
                   {change.toFixed(1)}%
                 </text>
