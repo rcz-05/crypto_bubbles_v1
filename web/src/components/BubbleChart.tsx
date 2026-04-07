@@ -31,12 +31,12 @@ type PhysicsBody = {
 /* ------------------------------------------------------------------ */
 /*  Physics tuning                                                     */
 /* ------------------------------------------------------------------ */
-const SPRING = 0.003;           // gentler spring — slow, smooth return
-const DAMPING = 0.97;           // high damping — less bouncy, more floaty
-const DRIFT = 0.015;            // very mild jitter — calm drift
-const COLLISION_STRENGTH = 0.6; // push-apart force on overlap
-const WALL_PADDING = 2;
-const BUBBLE_GAP = 12;
+const SPRING = 0.001;           // very weak anchor — lets bubbles roam
+const DAMPING = 0.985;          // high damping — smooth, floaty momentum
+const DRIFT = 0.09;             // noticeable drift — bubbles visibly move
+const COLLISION_STRENGTH = 0.7; // firm push-apart on overlap
+const WALL_PADDING = 4;
+const BUBBLE_GAP = 6;
 const CURSOR_RADIUS = 20;       // tiny repulsion zone — barely there
 const CURSOR_FORCE = 0.15;      // whisper-light — just enough to notice
 const DEG = 180 / Math.PI;
@@ -151,7 +151,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
   const layoutNodes = useMemo(() => {
     if (!width || !height || !data.length) return [] as LayoutNode[];
 
-    // Calculate a value per coin for radius sizing
+    // Value per coin for radius sizing
     const items = data.map((coin) => {
       let value: number;
       if (timeFrame === "market_cap") {
@@ -164,34 +164,22 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     });
 
     const maxVal = Math.max(...items.map((v) => v.value));
-    const minR = 16;
-    const maxR = Math.min(width, height) * 0.085;
+    const minR = 24;
+    const maxR = Math.min(width, height) * 0.12;
 
-    // Compute radii
-    const sized = items.map((v) => ({
-      coin: v.coin,
-      r: minR + (v.value / maxVal) * (maxR - minR),
-    }));
-
-    // Distribute across full board in a grid with deterministic jitter
-    const n = sized.length;
-    const cols = Math.ceil(Math.sqrt(n * (width / height)));
-    const rows = Math.ceil(n / cols);
-    const cellW = width / cols;
-    const cellH = height / rows;
-    const pad = 10; // keep away from edges
-
-    return sized.map((item, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const seed = hashSeed(item.coin.id);
-      const jx = Math.sin(seed * 1.7) * cellW * 0.18;
-      const jy = Math.cos(seed * 2.3) * cellH * 0.18;
+    // Random placement using deterministic hash — no grid pattern
+    return items.map((v) => {
+      const r = minR + (v.value / maxVal) * (maxR - minR);
+      const seed = hashSeed(v.coin.id);
+      // Multiple hash-derived pseudo-random values for x, y
+      const hx = ((Math.sin(seed * 7.13) + 1) / 2);       // 0-1
+      const hy = ((Math.cos(seed * 11.47) + 1) / 2);      // 0-1
+      const pad = r + 8;
       return {
-        x: Math.max(item.r + pad, Math.min(width - item.r - pad, cellW * (col + 0.5) + jx)),
-        y: Math.max(item.r + pad, Math.min(height - item.r - pad, cellH * (row + 0.5) + jy)),
-        r: item.r,
-        data: item.coin,
+        x: pad + hx * (width - pad * 2),
+        y: pad + hy * (height - pad * 2),
+        r,
+        data: v.coin,
       };
     });
   }, [data, width, height, timeFrame]);
