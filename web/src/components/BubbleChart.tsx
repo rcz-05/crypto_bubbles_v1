@@ -442,11 +442,11 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
         // Medal outline for top 3 gainers / losers
         const medal = medalMap.get(coin.id);
         const medalStroke = medal === "gold"
-          ? "#e8c56d"
+          ? "#ffd700"
           : medal === "silver"
-            ? "#c0c0c0"
+            ? "#e0e0e0"
             : medal === "bronze"
-              ? "#cd9b6a"
+              ? "#e8a04e"
               : null;
         const medalWidth = medal === "gold" ? 5 : medal === "silver" ? 4.5 : medal === "bronze" ? 4 : 0;
 
