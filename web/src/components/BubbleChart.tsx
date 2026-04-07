@@ -100,7 +100,6 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       return Math.max(0.1, change);
     });
 
-    // Tight packing — minimal padding for the crypto bubbles look
     const packer = pack<PackDatum>().size([width, height]).padding(1);
 
     return packer(root)
@@ -206,52 +205,15 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       aria-label="Crypto market bubble chart"
     >
       <defs>
-        {/*
-          3D sphere gradients — offset hotspot creates the "lit ball" effect.
-          Inspired by crypto-bubbles.net visual style.
-        */}
-        <radialGradient id="sphere-green" cx="38%" cy="32%" r="65%" fx="38%" fy="32%">
-          <stop offset="0%" stopColor="#a7f3d0" />
-          <stop offset="30%" stopColor="#34d399" />
-          <stop offset="70%" stopColor="#10b981" />
-          <stop offset="100%" stopColor="#065f46" />
-        </radialGradient>
-
-        <radialGradient id="sphere-red" cx="38%" cy="32%" r="65%" fx="38%" fy="32%">
-          <stop offset="0%" stopColor="#fecdd3" />
-          <stop offset="30%" stopColor="#fb7185" />
-          <stop offset="70%" stopColor="#f43f5e" />
-          <stop offset="100%" stopColor="#9f1239" />
-        </radialGradient>
-
-        {/* Colored glow filters for ambient light bleed */}
-        <filter id="glow-green" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
-          <feColorMatrix
-            in="blur"
-            type="matrix"
-            values="0 0 0 0 0.2  0 0 0 0 0.8  0 0 0 0 0.5  0 0 0 0.35 0"
-            result="glow"
-          />
-          <feMerge>
-            <feMergeNode in="glow" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-
-        <filter id="glow-red" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
-          <feColorMatrix
-            in="blur"
-            type="matrix"
-            values="0 0 0 0 0.9  0 0 0 0 0.25  0 0 0 0 0.35  0 0 0 0.35 0"
-            result="glow"
-          />
-          <feMerge>
-            <feMergeNode in="glow" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
+        {/* Flat 2D soft gradients — very subtle top-to-bottom tint for organic feel */}
+        <linearGradient id="flat-green" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#4ade80" />
+          <stop offset="100%" stopColor="#22c55e" />
+        </linearGradient>
+        <linearGradient id="flat-red" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#fb7185" />
+          <stop offset="100%" stopColor="#f43f5e" />
+        </linearGradient>
       </defs>
 
       {layoutNodes.map((node, i) => {
@@ -263,9 +225,6 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
         const isHighRisk =
           (coin.market_cap_rank != null && coin.market_cap_rank > 25) ||
           Math.abs(change) > 15;
-
-        // Only apply expensive glow filter on larger bubbles for performance
-        const useGlow = node.r > 14;
 
         const showSymbol = node.r > 8;
         const showIcon = node.r > 30;
@@ -282,7 +241,6 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
             onClick={() => onSelect(coin)}
             className="bubble-node"
             style={{ cursor: "pointer" }}
-            filter={useGlow ? (positive ? "url(#glow-green)" : "url(#glow-red)") : undefined}
           >
             <title>
               {coin.name}: {change.toFixed(2)}% ({timeFrame})
@@ -293,10 +251,12 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
               <circle r={node.r - 1} />
             </clipPath>
 
-            {/* Main sphere — 3D lit ball */}
+            {/* Flat 2D circle with soft border */}
             <circle
               r={node.r}
-              fill={positive ? "url(#sphere-green)" : "url(#sphere-red)"}
+              fill={positive ? "url(#flat-green)" : "url(#flat-red)"}
+              stroke={positive ? "rgba(134,239,172,0.3)" : "rgba(253,164,175,0.3)"}
+              strokeWidth={1.5}
             />
 
             <g clipPath={`url(#${clipId})`}>
@@ -325,10 +285,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
                         ? -fontSizePct * 0.25
                         : fontSizeSymbol * 0.38
                   }
-                  style={{
-                    pointerEvents: "none",
-                    textShadow: "0 1px 3px rgba(0,0,0,0.5)",
-                  }}
+                  style={{ pointerEvents: "none" }}
                 >
                   {coin.symbol.toUpperCase()}
                 </text>
@@ -347,8 +304,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
                   }
                   style={{
                     pointerEvents: "none",
-                    opacity: 0.92,
-                    textShadow: "0 1px 2px rgba(0,0,0,0.4)",
+                    opacity: 0.88,
                   }}
                 >
                   {change.toFixed(1)}%

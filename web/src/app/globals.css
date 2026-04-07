@@ -470,11 +470,11 @@ button {
 .bubble-node {
   transform-box: fill-box;
   transform-origin: center;
-  transition: opacity 160ms ease;
+  transition: filter 160ms ease, opacity 160ms ease;
 }
 
 .bubble-node:hover {
-  opacity: 0.88;
+  filter: brightness(1.12);
 }
 
 .board-overlay,
