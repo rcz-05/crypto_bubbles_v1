@@ -446,8 +446,8 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
         const seed = hashSeed(coin.id);
 
         const isHighRisk =
-          (coin.market_cap_rank != null && coin.market_cap_rank > 50) ||
-          Math.abs(change) > 20;
+          (coin.market_cap_rank != null && coin.market_cap_rank > 150) &&
+          Math.abs(change) > 40;
 
         // Medal outline for top 3 gainers / losers
         const medal = medalMap.get(coin.id);
