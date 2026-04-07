@@ -216,6 +216,28 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     return map;
   }, [data, timeFrame]);
 
+  /* ---- high-risk set: top 10% volatility among coins ranked outside top 100 ---- */
+  const highRiskSet = useMemo(() => {
+    const set = new Set<string>();
+    if (timeFrame === "market_cap") return set;
+
+    const changes = data.map((coin) => Math.abs(getChangeForTimeFrame(coin, timeFrame)));
+    const sorted = [...changes].sort((a, b) => a - b);
+    const p90 = sorted[Math.floor(sorted.length * 0.9)] ?? Infinity;
+
+    for (const coin of data) {
+      const absChange = Math.abs(getChangeForTimeFrame(coin, timeFrame));
+      if (
+        absChange >= p90 &&
+        coin.market_cap_rank != null &&
+        coin.market_cap_rank > 100
+      ) {
+        set.add(coin.id);
+      }
+    }
+    return set;
+  }, [data, timeFrame]);
+
   /* ---- refs ---- */
   const bodiesRef = useRef<PhysicsBody[]>([]);
   const gRefs = useRef<(SVGGElement | null)[]>([]);
@@ -445,9 +467,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
         const clipId = `clip-${coin.id}`;
         const seed = hashSeed(coin.id);
 
-        const isHighRisk =
-          (coin.market_cap_rank != null && coin.market_cap_rank > 150) &&
-          Math.abs(change) > 40;
+        const isHighRisk = highRiskSet.has(coin.id);
 
         // Medal outline for top 3 gainers / losers
         const medal = medalMap.get(coin.id);
