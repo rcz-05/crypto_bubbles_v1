@@ -190,6 +190,32 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     });
   }, [data, width, height, timeFrame]);
 
+  /* ---- medal rankings: top 3 gainers + top 3 losers ---- */
+  const medalMap = useMemo(() => {
+    const map = new Map<string, "gold" | "silver" | "bronze">();
+    if (timeFrame === "market_cap") return map;
+
+    const withChange = data.map((coin) => ({
+      id: coin.id,
+      change: getChangeForTimeFrame(coin, timeFrame),
+    }));
+
+    // Top 3 gainers (highest positive change)
+    const gainers = [...withChange].filter((c) => c.change > 0).sort((a, b) => b.change - a.change);
+    const medals: ("gold" | "silver" | "bronze")[] = ["gold", "silver", "bronze"];
+    for (let i = 0; i < 3 && i < gainers.length; i++) {
+      map.set(gainers[i].id, medals[i]);
+    }
+
+    // Top 3 losers (most negative change)
+    const losers = [...withChange].filter((c) => c.change < 0).sort((a, b) => a.change - b.change);
+    for (let i = 0; i < 3 && i < losers.length; i++) {
+      map.set(losers[i].id, medals[i]);
+    }
+
+    return map;
+  }, [data, timeFrame]);
+
   /* ---- refs ---- */
   const bodiesRef = useRef<PhysicsBody[]>([]);
   const gRefs = useRef<(SVGGElement | null)[]>([]);
@@ -413,6 +439,17 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
           (coin.market_cap_rank != null && coin.market_cap_rank > 25) ||
           Math.abs(change) > 15;
 
+        // Medal outline for top 3 gainers / losers
+        const medal = medalMap.get(coin.id);
+        const medalStroke = medal === "gold"
+          ? "#e8c56d"
+          : medal === "silver"
+            ? "#c0c0c0"
+            : medal === "bronze"
+              ? "#cd9b6a"
+              : null;
+        const medalWidth = medal === "gold" ? 5 : medal === "silver" ? 4.5 : medal === "bronze" ? 4 : 0;
+
         const showSymbol = node.r > 8;
         const showIcon = node.r > 30;
         const showPct = node.r > 20;
@@ -442,8 +479,8 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
               ref={setPathRef(i)}
               d={blobPath(node.r, seed, 0)}
               fill={positive ? "url(#org-green)" : "url(#org-red)"}
-              stroke={positive ? "#2d8a2d" : "#b03a33"}
-              strokeWidth={2.5}
+              stroke={medalStroke ?? (positive ? "#2d8a2d" : "#b03a33")}
+              strokeWidth={medalStroke ? medalWidth : 2.5}
             />
 
             <g clipPath={`url(#${clipId})`}>
