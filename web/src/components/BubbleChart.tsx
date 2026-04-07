@@ -31,12 +31,10 @@ type PhysicsBody = {
 /* ------------------------------------------------------------------ */
 /*  Physics tuning                                                     */
 /* ------------------------------------------------------------------ */
-const SPRING = 0.001;           // very weak anchor — lets bubbles roam
-const DAMPING = 0.985;          // high damping — smooth, floaty momentum
-const DRIFT = 0.09;             // noticeable drift — bubbles visibly move
-const COLLISION_STRENGTH = 0.7; // firm push-apart on overlap
+const DAMPING = 0.992;          // very high — smooth long glides
+const COLLISION_STRENGTH = 0.5;
 const WALL_PADDING = 4;
-const BUBBLE_GAP = 6;
+const BUBBLE_GAP = 4;
 const CURSOR_RADIUS = 20;       // tiny repulsion zone — barely there
 const CURSOR_FORCE = 0.15;      // whisper-light — just enough to notice
 const DEG = 180 / Math.PI;
@@ -164,8 +162,8 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     });
 
     const maxVal = Math.max(...items.map((v) => v.value));
-    const minR = 24;
-    const maxR = Math.min(width, height) * 0.12;
+    const minR = 18;
+    const maxR = Math.min(width, height) * 0.07;
 
     // Random placement using deterministic hash — no grid pattern
     return items.map((v) => {
@@ -237,14 +235,14 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       const t = now / 1000;
 
       /* --- physics step --- */
-      for (const body of bodies) {
-        // spring back to target
-        body.vx += (body.targetX - body.x) * SPRING;
-        body.vy += (body.targetY - body.y) * SPRING;
+      for (let b = 0; b < bodies.length; b++) {
+        const body = bodies[b];
+        const seed = seeds[b] || b;
 
-        // ambient drift
-        body.vx += (Math.random() - 0.5) * DRIFT;
-        body.vy += (Math.random() - 0.5) * DRIFT;
+        // Smooth wandering — each bubble follows its own sine-wave path
+        // so movement is fluid, not jittery. Different frequencies per bubble.
+        body.vx += Math.sin(t * 0.3 + seed * 1.7) * 0.04;
+        body.vy += Math.cos(t * 0.25 + seed * 2.3) * 0.04;
 
         // cursor repulsion
         if (cursor) {
