@@ -471,10 +471,11 @@ button {
 .bubble-node {
   transform-box: fill-box;
   transform-origin: center;
+  transition: filter 180ms ease;
 }
 
 .bubble-node:hover {
-  filter: brightness(1.1);
+  filter: brightness(1.15) drop-shadow(0 0 8px rgba(255,255,255,0.15));
 }
 
 .board-overlay,
