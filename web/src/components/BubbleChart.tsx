@@ -37,7 +37,7 @@ const DAMPING = 0.97;           // high damping — less bouncy, more floaty
 const DRIFT = 0.015;            // very mild jitter — calm drift
 const COLLISION_STRENGTH = 0.6; // push-apart force on overlap
 const WALL_PADDING = 2;
-const BUBBLE_GAP = 8;
+const BUBBLE_GAP = 12;
 const CURSOR_RADIUS = 20;       // tiny repulsion zone — barely there
 const CURSOR_FORCE = 0.15;      // whisper-light — just enough to notice
 const DEG = 180 / Math.PI;
@@ -156,14 +156,14 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
 
     const root = hierarchy<PackDatum>({ children: data } as PackDatum).sum((d) => {
       if (timeFrame === "market_cap") {
-        return Math.max(1, Math.pow(d.market_cap ?? 0, 0.45));
+        return Math.max(4, Math.pow(d.market_cap ?? 0, 0.42));
       }
       const change = Math.abs(getChangeForTimeFrame(d as Coin, timeFrame));
-      // Floor at 1.5 — small coins still visible but big movers stand out more
-      return Math.max(1.5, change);
+      // Floor at 3 — small coins get decent size, big movers still stand out
+      return Math.max(3, change);
     });
 
-    const packer = pack<PackDatum>().size([width, height]).padding(4);
+    const packer = pack<PackDatum>().size([width, height]).padding(14);
 
     return packer(root)
       .leaves()
