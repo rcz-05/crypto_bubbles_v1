@@ -37,9 +37,9 @@ const DAMPING = 0.93;           // velocity decay — slightly bouncy
 const DRIFT = 0.04;             // ambient jitter
 const COLLISION_STRENGTH = 0.6; // push-apart force on overlap
 const WALL_PADDING = 2;
-const BUBBLE_GAP = 5;
-const CURSOR_RADIUS = 35;       // repulsion zone around pointer (px)
-const CURSOR_FORCE = 0.4;       // very gentle — noticeable but never blocks clicks
+const BUBBLE_GAP = 8;
+const CURSOR_RADIUS = 20;       // tiny repulsion zone — barely there
+const CURSOR_FORCE = 0.15;      // whisper-light — just enough to notice
 const DEG = 180 / Math.PI;
 
 /* ------------------------------------------------------------------ */
@@ -162,7 +162,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       return Math.max(0.1, change);
     });
 
-    const packer = pack<PackDatum>().size([width, height]).padding(5);
+    const packer = pack<PackDatum>().size([width, height]).padding(8);
 
     return packer(root)
       .leaves()
@@ -382,13 +382,14 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       style={{ touchAction: "pan-y" }}
     >
       <defs>
+        {/* Pastel fills */}
         <linearGradient id="org-green" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#22664D" />
-          <stop offset="100%" stopColor="#1B4D3E" />
+          <stop offset="0%" stopColor="#6ee7b7" />
+          <stop offset="100%" stopColor="#4ade80" />
         </linearGradient>
         <linearGradient id="org-red" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#C93030" />
-          <stop offset="100%" stopColor="#B22222" />
+          <stop offset="0%" stopColor="#fca5a5" />
+          <stop offset="100%" stopColor="#f87171" />
         </linearGradient>
       </defs>
 
@@ -432,8 +433,8 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
               ref={setPathRef(i)}
               d={blobPath(node.r, seed, 0)}
               fill={positive ? "url(#org-green)" : "url(#org-red)"}
-              stroke={positive ? "rgba(52,211,153,0.28)" : "rgba(248,113,113,0.28)"}
-              strokeWidth={2}
+              stroke={positive ? "#065f46" : "#7f1d1d"}
+              strokeWidth={2.5}
             />
 
             <g clipPath={`url(#${clipId})`}>
@@ -452,7 +453,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
               {showSymbol && (
                 <text
                   textAnchor="middle"
-                  fill="#fff"
+                  fill={positive ? "#064e3b" : "#7f1d1d"}
                   fontWeight={700}
                   fontSize={fontSizeSymbol}
                   y={
@@ -471,7 +472,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
               {showPct && (
                 <text
                   textAnchor="middle"
-                  fill="rgba(255,255,255,0.82)"
+                  fill={positive ? "#065f46" : "#991b1b"}
                   fontWeight={600}
                   fontSize={fontSizePct}
                   y={
