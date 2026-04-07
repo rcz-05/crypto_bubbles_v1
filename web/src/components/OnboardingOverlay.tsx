@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { trackEvent } from "@/lib/telemetry";
 
 const STORAGE_KEY = "coincanvas-onboarding-seen";
 
@@ -11,7 +12,7 @@ const steps = [
   },
   {
     title: "Reading the board",
-    body: "Each bubble is a cryptocurrency. Green means the price went up, red means it went down. The bigger the bubble, the bigger the move (or market value, depending on the selected view).",
+    body: "Each bubble is a cryptocurrency. Green means the price went up, red means it went down. Bigger bubbles are the top movers for the selected timeframe. Gold, silver, and bronze outlines mark the #1, #2, and #3 biggest gainers and losers. An orange dashed outline flags volatile low-cap coins.",
   },
   {
     title: "Understanding a mover",
@@ -38,11 +39,16 @@ export function OnboardingOverlay() {
   }, []);
 
   const dismiss = useCallback(() => {
+    trackEvent({
+      type: "onboarding_completed",
+      recordedAt: new Date().toISOString(),
+      payload: { stepsViewed: step + 1 },
+    });
     setVisible(false);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY, "true");
     }
-  }, []);
+  }, [step]);
 
   const next = useCallback(() => {
     if (step < steps.length - 1) {

@@ -256,10 +256,18 @@ export default function HomePage() {
                 Bubble size = {timeFrame === "market_cap" ? "market cap rank" : `${timeFrame} movement rank`}
               </span>
               <span className="board-sizing-hint risk-legend">
+                <svg width="42" height="14" viewBox="0 0 42 14" style={{ verticalAlign: "middle", marginRight: 4 }}>
+                  <circle cx="7" cy="7" r="5" fill="none" stroke="#ffd700" strokeWidth="2" />
+                  <circle cx="21" cy="7" r="5" fill="none" stroke="#e0e0e0" strokeWidth="2" />
+                  <circle cx="35" cy="7" r="5" fill="none" stroke="#e8a04e" strokeWidth="2" />
+                </svg>
+                = top 3 gainers &amp; losers
+              </span>
+              <span className="board-sizing-hint risk-legend">
                 <svg width="14" height="14" viewBox="0 0 14 14" style={{ verticalAlign: "middle", marginRight: 4 }}>
                   <circle cx="7" cy="7" r="5" fill="none" stroke="#ffab40" strokeWidth="2" strokeDasharray="3 2" />
                 </svg>
-                = volatile (low cap or extreme swing)
+                = volatile (low cap + extreme swing)
               </span>
             </div>
           </div>
@@ -285,7 +293,7 @@ export default function HomePage() {
         </div>
 
         <div className="status-bar">
-            <span>Bubble sizing: {timeFrame === "market_cap" ? "market cap" : `${timeFrame} movement magnitude`}.</span>
+            <span>Bubble sizing: {timeFrame === "market_cap" ? "market cap rank" : `${timeFrame} movement rank`}.</span>
             <span>Context cards load on demand.</span>
             {marketMood.topLoser ? (
               <span>
