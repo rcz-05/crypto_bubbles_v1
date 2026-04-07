@@ -156,10 +156,12 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
 
     const root = hierarchy<PackDatum>({ children: data } as PackDatum).sum((d) => {
       if (timeFrame === "market_cap") {
-        return Math.max(1, d.market_cap ?? 0);
+        // Power compress so small-cap coins don't vanish
+        return Math.max(1, Math.pow(d.market_cap ?? 0, 0.4));
       }
       const change = Math.abs(getChangeForTimeFrame(d as Coin, timeFrame));
-      return Math.max(0.1, change);
+      // Floor at 2.5 so even tiny movers stay readable
+      return Math.max(2.5, change);
     });
 
     const packer = pack<PackDatum>().size([width, height]).padding(8);
@@ -382,14 +384,14 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       style={{ touchAction: "pan-y" }}
     >
       <defs>
-        {/* Pastel fills */}
+        {/* Muted dark pastels — no glow */}
         <linearGradient id="org-green" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#6ee7b7" />
-          <stop offset="100%" stopColor="#4ade80" />
+          <stop offset="0%" stopColor="#5a9e7c" />
+          <stop offset="100%" stopColor="#4a8a6a" />
         </linearGradient>
         <linearGradient id="org-red" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#fca5a5" />
-          <stop offset="100%" stopColor="#f87171" />
+          <stop offset="0%" stopColor="#c27272" />
+          <stop offset="100%" stopColor="#af5f5f" />
         </linearGradient>
       </defs>
 
@@ -453,7 +455,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
               {showSymbol && (
                 <text
                   textAnchor="middle"
-                  fill={positive ? "#064e3b" : "#7f1d1d"}
+                  fill="#fff"
                   fontWeight={700}
                   fontSize={fontSizeSymbol}
                   y={
@@ -472,7 +474,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
               {showPct && (
                 <text
                   textAnchor="middle"
-                  fill={positive ? "#065f46" : "#991b1b"}
+                  fill="rgba(255,255,255,0.85)"
                   fontWeight={600}
                   fontSize={fontSizePct}
                   y={
