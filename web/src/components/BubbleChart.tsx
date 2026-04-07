@@ -372,8 +372,8 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     >
       <defs>
         <linearGradient id="org-green" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#80EF80" />
-          <stop offset="100%" stopColor="#6ddb6d" />
+          <stop offset="0%" stopColor="#6bc96b" />
+          <stop offset="100%" stopColor="#5bb85b" />
         </linearGradient>
         <linearGradient id="org-red" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#FF746C" />
