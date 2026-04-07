@@ -24,8 +24,13 @@ type PhysicsBody = {
   vx: number;
   vy: number;
   r: number;
+  targetR: number;
   targetX: number;
   targetY: number;
+  coinId: string;
+  /** 0 = red, 1 = green — lerped for smooth color transitions */
+  colorT: number;
+  targetColorT: number;
 };
 
 /* ------------------------------------------------------------------ */
@@ -252,29 +257,34 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
 
   /* ---- sync bodies + seeds ---- */
   useEffect(() => {
-    const prev = bodiesRef.current;
     const prevMap = new Map<string, PhysicsBody>();
-    if (prev.length > 0) {
-      prev.forEach((b, i) => prevMap.set(`idx-${i}`, b));
+    for (const b of bodiesRef.current) {
+      prevMap.set(b.coinId, b);
     }
-    bodiesRef.current = layoutNodes.map((node, i) => {
-      const existing = prevMap.get(`idx-${i}`);
-      if (existing && Math.abs(existing.targetX - node.x) < node.r * 3) {
+    bodiesRef.current = layoutNodes.map((node) => {
+      const change = getChangeForTimeFrame(node.data, timeFrame);
+      const colorTarget = change >= 0 ? 1 : 0;
+      const existing = prevMap.get(node.data.id);
+      if (existing) {
         existing.targetX = node.x;
         existing.targetY = node.y;
-        existing.r = node.r;
+        existing.targetR = node.r;
+        existing.targetColorT = colorTarget;
         return existing;
       }
       return {
         x: node.x, y: node.y,
         vx: (Math.random() - 0.5) * 0.2,
         vy: (Math.random() - 0.5) * 0.2,
-        r: node.r, targetX: node.x, targetY: node.y,
+        r: node.r, targetR: node.r,
+        targetX: node.x, targetY: node.y,
+        coinId: node.data.id,
+        colorT: colorTarget, targetColorT: colorTarget,
       };
     });
     seedsRef.current = layoutNodes.map((n) => hashSeed(n.data.id));
     popRef.current = new Array(layoutNodes.length).fill(0);
-  }, [layoutNodes]);
+  }, [layoutNodes, timeFrame]);
 
   /* scroll momentum removed — it caused bubbles to clump together */
 
@@ -321,6 +331,12 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
             body.vy += (dy / dist) * strength;
           }
         }
+
+        // Smooth radius transition when timeframe changes
+        body.r += (body.targetR - body.r) * 0.06;
+
+        // Smooth color transition (0=red, 1=green)
+        body.colorT += (body.targetColorT - body.colorT) * 0.06;
 
         body.x += body.vx;
         body.y += body.vy;
@@ -370,6 +386,25 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
             if (pathEl) pathEl.setAttribute("d", d);
             const riskEl = riskPathRefs.current[i];
             if (riskEl) riskEl.setAttribute("d", d);
+          }
+        }
+
+        // smooth color transition
+        if (frame % 4 === 0) {
+          const pathEl = pathRefs.current[i];
+          if (pathEl) {
+            const ct = body.colorT;
+            if (ct > 0.99) {
+              pathEl.setAttribute("fill", "url(#org-green)");
+            } else if (ct < 0.01) {
+              pathEl.setAttribute("fill", "url(#org-red)");
+            } else {
+              // interpolate between red (#FF746C) and green (#6bc96b)
+              const r = Math.round(0xFF + (0x6b - 0xFF) * ct);
+              const g = Math.round(0x74 + (0xc9 - 0x74) * ct);
+              const b2 = Math.round(0x6C + (0x6b - 0x6C) * ct);
+              pathEl.setAttribute("fill", `rgb(${r},${g},${b2})`);
+            }
           }
         }
       }
