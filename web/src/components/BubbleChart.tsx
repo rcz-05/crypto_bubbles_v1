@@ -38,8 +38,8 @@ const DRIFT = 0.04;             // ambient jitter
 const COLLISION_STRENGTH = 0.6; // push-apart force on overlap
 const WALL_PADDING = 2;
 const BUBBLE_GAP = 5;
-const CURSOR_RADIUS = 110;      // repulsion zone around pointer (px)
-const CURSOR_FORCE = 3.2;       // max repulsion strength
+const CURSOR_RADIUS = 60;       // repulsion zone around pointer (px)
+const CURSOR_FORCE = 1.2;       // max repulsion strength — gentle enough to click
 const DEG = 180 / Math.PI;
 
 /* ------------------------------------------------------------------ */
