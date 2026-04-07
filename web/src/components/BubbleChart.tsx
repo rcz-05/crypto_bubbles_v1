@@ -31,12 +31,13 @@ type PhysicsBody = {
 /* ------------------------------------------------------------------ */
 /*  Physics tuning                                                     */
 /* ------------------------------------------------------------------ */
-const DAMPING = 0.992;          // very high — smooth long glides
 const COLLISION_STRENGTH = 0.5;
 const WALL_PADDING = 4;
 const BUBBLE_GAP = 4;
-const CURSOR_RADIUS = 20;       // tiny repulsion zone — barely there
-const CURSOR_FORCE = 0.15;      // whisper-light — just enough to notice
+const CURSOR_RADIUS = 20;
+const CURSOR_FORCE = 0.15;
+const DRIFT_SPEED = 0.18;       // how fast bubbles float (px/frame)
+const DRIFT_BLEND = 0.015;      // how quickly velocity aligns to drift direction
 const DEG = 180 / Math.PI;
 
 /* ------------------------------------------------------------------ */
@@ -162,8 +163,8 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     });
 
     const maxVal = Math.max(...items.map((v) => v.value));
-    const minR = 18;
-    const maxR = Math.min(width, height) * 0.07;
+    const minR = 20;
+    const maxR = Math.min(width, height) * 0.09;
 
     // Random placement using deterministic hash — no grid pattern
     return items.map((v) => {
@@ -239,10 +240,18 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
         const body = bodies[b];
         const seed = seeds[b] || b;
 
-        // Smooth wandering — each bubble follows its own sine-wave path
-        // so movement is fluid, not jittery. Different frequencies per bubble.
-        body.vx += Math.sin(t * 0.3 + seed * 1.7) * 0.04;
-        body.vy += Math.cos(t * 0.25 + seed * 2.3) * 0.04;
+        // Each bubble has a slowly rotating drift direction driven by
+        // overlapping sine waves. We compute a TARGET velocity and blend
+        // toward it — velocity is inherently bounded, can never accumulate.
+        const angle =
+          Math.sin(t * 0.13 + seed * 1.7) * Math.PI +
+          Math.cos(t * 0.09 + seed * 2.3) * 0.5;
+        const personalSpeed = DRIFT_SPEED + ((seed & 0xff) / 255) * 0.06;
+        const targetVx = Math.cos(angle) * personalSpeed;
+        const targetVy = Math.sin(angle) * personalSpeed;
+
+        body.vx += (targetVx - body.vx) * DRIFT_BLEND;
+        body.vy += (targetVy - body.vy) * DRIFT_BLEND;
 
         // cursor repulsion
         if (cursor) {
@@ -257,8 +266,6 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
           }
         }
 
-        body.vx *= DAMPING;
-        body.vy *= DAMPING;
         body.x += body.vx;
         body.y += body.vy;
         containInBounds(body, width, height);
