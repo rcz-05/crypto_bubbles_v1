@@ -156,15 +156,14 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
 
     const root = hierarchy<PackDatum>({ children: data } as PackDatum).sum((d) => {
       if (timeFrame === "market_cap") {
-        // Power compress so small-cap coins don't vanish
-        return Math.max(1, Math.pow(d.market_cap ?? 0, 0.4));
+        return Math.max(1, Math.pow(d.market_cap ?? 0, 0.45));
       }
       const change = Math.abs(getChangeForTimeFrame(d as Coin, timeFrame));
-      // Floor at 2.5 so even tiny movers stay readable
-      return Math.max(2.5, change);
+      // Floor at 1.5 — small coins still visible but big movers stand out more
+      return Math.max(1.5, change);
     });
 
-    const packer = pack<PackDatum>().size([width, height]).padding(8);
+    const packer = pack<PackDatum>().size([width, height]).padding(4);
 
     return packer(root)
       .leaves()
@@ -213,19 +212,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     popRef.current = new Array(layoutNodes.length).fill(0);
   }, [layoutNodes]);
 
-  /* ---- scroll momentum ---- */
-  useEffect(() => {
-    let lastY = window.scrollY;
-    const onScroll = () => {
-      const dy = window.scrollY - lastY;
-      lastY = window.scrollY;
-      for (const body of bodiesRef.current) {
-        body.vy += dy * 0.12;
-      }
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  /* scroll momentum removed — it caused bubbles to clump together */
 
   /* ---- animation loop ---- */
   useEffect(() => {
@@ -384,14 +371,13 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       style={{ touchAction: "pan-y" }}
     >
       <defs>
-        {/* Muted dark pastels — no glow */}
         <linearGradient id="org-green" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#5a9e7c" />
-          <stop offset="100%" stopColor="#4a8a6a" />
+          <stop offset="0%" stopColor="#80EF80" />
+          <stop offset="100%" stopColor="#6ddb6d" />
         </linearGradient>
         <linearGradient id="org-red" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#c27272" />
-          <stop offset="100%" stopColor="#af5f5f" />
+          <stop offset="0%" stopColor="#FF746C" />
+          <stop offset="100%" stopColor="#e8635b" />
         </linearGradient>
       </defs>
 
@@ -435,7 +421,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
               ref={setPathRef(i)}
               d={blobPath(node.r, seed, 0)}
               fill={positive ? "url(#org-green)" : "url(#org-red)"}
-              stroke={positive ? "#065f46" : "#7f1d1d"}
+              stroke={positive ? "#2d8a2d" : "#b03a33"}
               strokeWidth={2.5}
             />
 
