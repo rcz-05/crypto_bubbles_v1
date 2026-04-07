@@ -32,9 +32,9 @@ type PhysicsBody = {
 /* ------------------------------------------------------------------ */
 /*  Physics tuning                                                     */
 /* ------------------------------------------------------------------ */
-const SPRING = 0.006;           // spring stiffness for return-to-target
-const DAMPING = 0.93;           // velocity decay — slightly bouncy
-const DRIFT = 0.04;             // ambient jitter
+const SPRING = 0.003;           // gentler spring — slow, smooth return
+const DAMPING = 0.97;           // high damping — less bouncy, more floaty
+const DRIFT = 0.015;            // very mild jitter — calm drift
 const COLLISION_STRENGTH = 0.6; // push-apart force on overlap
 const WALL_PADDING = 2;
 const BUBBLE_GAP = 8;
@@ -442,6 +442,9 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
                 <text
                   textAnchor="middle"
                   fill="#fff"
+                  stroke="#000"
+                  strokeWidth={node.r > 20 ? 2.5 : 1.5}
+                  paintOrder="stroke"
                   fontWeight={600}
                   fontSize={fontSizeSymbol}
                   fontFamily="var(--font-bubble), Fredoka, sans-serif"
@@ -461,7 +464,10 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
               {showPct && (
                 <text
                   textAnchor="middle"
-                  fill="rgba(255,255,255,0.85)"
+                  fill="rgba(255,255,255,0.9)"
+                  stroke="#000"
+                  strokeWidth={node.r > 20 ? 2 : 1}
+                  paintOrder="stroke"
                   fontWeight={500}
                   fontSize={fontSizePct}
                   fontFamily="var(--font-bubble), Fredoka, sans-serif"
