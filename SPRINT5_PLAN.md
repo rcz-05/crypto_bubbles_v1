@@ -50,7 +50,7 @@ Living document. Update checkboxes as items ship. Keep in sync with the notebook
 
 ### P1 — high-leverage implementation (also becomes Variant B of the A/B test)
 
-- [ ] **P1.0 LLM explanation engine** — per-coin AI-generated summary using CoinGecko data only. Foundation for P1.1–P1.3. See sub-plan below.
+- [x] **P1.0 LLM explanation engine** ✅ shipped to prod 2026-04-24 — per-coin AI-generated summary using CoinGecko data only. Foundation for P1.1–P1.3. See sub-plan below.
 - [ ] **P1.1 Per-source trust tags** — heuristic tier (high / medium / low) based on source domain; visible chip on each citation in the evidence drawer
 - [ ] **P1.2 "AI-generated" badge** — explicit label on the summary block so users know what's LLM output vs. verified data
 - [ ] **P1.3 ELI5 / novice language toggle** — second system prompt that forces plain wording and avoids jargon; user-flippable switch
@@ -100,15 +100,15 @@ Living document. Update checkboxes as items ship. Keep in sync with the notebook
   - Preview URL `coincanvas-app-git-feat-llm-integration-rcz-05s-projects.vercel.app` built in 27s
   - Smoke tests: BTC (Mild move, 1.8s), USDT (Stable, 1.9s), PEPE (High volatility, 1.5s), cache hit 95ms — all on primary `gemini-2.5-flash`
   - Homepage returns 200, existing scan flow unaffected
-- [ ] **P1.0-Phase 4 — Merge to main + prod smoke test** (in progress)
-  - Fast-forward merge (no divergence, clean history)
-  - Vercel auto-deploys to prod on `main` push
-  - Monitor `vercel logs` for 10 min
-  - Instant revert available via `vercel rollback`
-- [ ] **P1.0-Phase 5 — Cleanup**
-  - Delete `feat/llm-integration` branch
-  - Credit Maya's `testing` branch in Sprint 5 notebook Code Review section ("LLM scaffolding prototype that informed the final design")
-  - Update P1.0 checkbox + status log below
+- [x] **P1.0-Phase 4 — Merge to main + prod smoke test** ✅ done 2026-04-24
+  - Fast-forward merge (clean linear history, 4 commits: docs + engine + UI + plan update)
+  - Vercel prod deploy `coincanvas-eggy738zs` built in 23s, Ready
+  - Had to manually re-attach the `coincanvas-app.vercel.app` alias (Vercel doesn't auto-promote the custom subdomain alias — known quirk from our earlier rename)
+  - Prod API smoke test: ETH (Stable, -1.8%), SOL (Mild move, +4.8%) — `gemini-2.5-flash` primary, ~1.8s latency, `source=llm` in response headers
+  - Homepage HTTP 200 on direct deploy URL + via primary domain (on unfiltered networks)
+- [x] **P1.0-Phase 5 — Cleanup** ✅ done 2026-04-24
+  - Local branch `feat/llm-integration` deleted post-merge; remote kept for audit trail
+  - Maya's `testing` branch to be credited in Sprint 5 notebook Code Review section: "LLM scaffolding prototype from Maya's testing branch informed the final design — we grafted the concept (CoinGecko-driven per-coin AI summary) and redesigned the implementation for Next.js 16 + Gemini 2.5 Flash, dropping external news providers and the OpenRouter SDK to reduce failure modes."
 
 **Scope decisions locked**:
 - Pure CoinGecko data only, no external news APIs (simpler, zero extra keys, no provider failures mid-demo)
@@ -163,3 +163,5 @@ Living document. Update checkboxes as items ship. Keep in sync with the notebook
 | 2026-04-24 | P1.0-Phase 1: LLM explanation engine + API route committed to feat/llm-integration (2 commits, 5 coin types smoke-tested, ~1.6s primary latency) | ✅ |
 | 2026-04-24 | P1.0-Phase 2: CoinModal AI interpretation card + telemetry events + CSS — build/lint clean | ✅ |
 | 2026-04-24 | P1.0-Phase 3: preview deploy verified (BTC/USDT/PEPE all classified correctly on primary model) | ✅ |
+| 2026-04-24 | P1.0-Phase 4: fast-forward merge to main, prod deploy live, coincanvas-app.vercel.app alias re-attached, smoke-tested | ✅ |
+| 2026-04-24 | P1.0-Phase 5: local branch cleaned up, Maya credit note drafted for notebook | ✅ |
