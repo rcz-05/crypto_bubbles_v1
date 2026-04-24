@@ -81,34 +81,27 @@ Living document. Update checkboxes as items ship. Keep in sync with the notebook
   - Added to Vercel `coincanvas-app` project for Production, Preview, Development (encrypted)
   - Pulled to `web/.env.local` (gitignored — confirmed)
   - Round-trip tested: `gemini-2.5-flash` returns clean responses
-- [ ] **P1.0-Phase 1 — Backend route** (isolated, no UI risk)
-  - Branch: `feat/llm-integration` off `main`
-  - New file `web/src/lib/explanation.ts`:
-    - Input: `{ coin, trend }` from CoinGecko fields
-    - Builds compact prompt (symbol, name, category, 24h change, rank, mcap, volume, high/low, volume/mcap ratio)
-    - Calls Gemini REST: `POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`
-    - Returns `{ summary, tier, watchNotes[], model, generatedAt }`
-    - Pure-TS `deterministicFallback()` returning same shape from raw numbers
-  - New file `web/src/app/api/explanation/route.ts`:
-    - POST endpoint, 10-min cache
-    - Always returns `200` with either LLM or fallback payload
-  - Acceptance: `curl -X POST http://localhost:3000/api/explanation -d '{...}'` returns JSON within 3s
-- [ ] **P1.0-Phase 2 — CoinModal UI integration** (smallest possible diff)
-  - Additive edit to `web/src/components/CoinModal.tsx`:
-    - `useEffect` calls `/api/explanation` when coin opens
-    - New section above existing evidence drawer: summary + tier chip + watch-notes
-    - "🪄 AI-generated" badge (small pill)
-    - Trust-tagged source chips pointing to CoinGecko field origins
-    - Graceful fallback rendering when `explanation: null`
-  - No changes to `BubbleChart`, `HeaderTabs`, `OnboardingOverlay`, or existing `/api/context`
-  - Acceptance: open any coin on localhost → LLM summary within 2s, badge visible, fallback works offline
-- [ ] **P1.0-Phase 3 — Vercel preview deploy QA** (safety net)
-  - Push `feat/llm-integration` → Vercel auto-creates preview URL
-  - Test on phone hotspot: 5 coins of different tiers (blue-chip / mid / small-cap / meme / stable)
-  - Verify latency <3s, cache hits, no console errors
-  - If broken: fix on branch, retry. `main` stays untouched.
-- [ ] **P1.0-Phase 4 — Merge to main + prod smoke test**
-  - Open PR, squash-merge on GitHub
+- [x] **P1.0-Phase 1 — Backend route** ✅ done 2026-04-24
+  - Branch `feat/llm-integration` created off `main`, 2 commits ahead
+  - `web/src/lib/explanation.ts` (230+ lines): Gemini REST call, model fallback chain (`gemini-2.5-flash` → `gemini-flash-latest` → `gemini-2.5-flash-lite`), structured JSON output via `responseSchema`, thinking disabled (`thinkingBudget: 0`), 12s timeout per model, deterministic numeric fallback returning same shape
+  - `web/src/app/api/explanation/route.ts`: POST endpoint, 10-min cache keyed by `(coin_id, bucketed trend, eli5 flag)`, 256-entry cap, always returns 200 with either LLM or fallback
+  - Smoke tests passed: BTC (-3.2%) → Active mover, SOL (+4.8%) → Mild move, USDT (+0.05%) → Stable, DOGE (+18.4%) → High volatility + ELI5, PEPE (+42.1%) → High volatility. Primary model ~1.6s, cache hit 6ms.
+  - Validation: invalid JSON → 400, missing fields → 400 with specific field name
+  - **No existing files touched — zero risk to main site**
+- [x] **P1.0-Phase 2 — CoinModal UI integration** ✅ done 2026-04-24
+  - New full-width "AI interpretation" card above the existing grid, not replacing anything
+  - Renders LLM summary + tier chip (Stable/Mild/Active/High volatility) + watch-notes list + 🪄 AI-generated badge + ⚙️ Numeric fallback badge variant + trust-tagged CoinGecko source chip + external-open link
+  - Two new telemetry events: `ai_explanation_loaded` (model, tier, is_fallback, time_ms) and `ai_explanation_failed`
+  - Per-coin in-memory cache in component (bucketed 24h change) for instant re-open
+  - Full graceful fallback path when `isFallback: true` or fetch errors
+  - BubbleChart, HeaderTabs, OnboardingOverlay, deterministic /api/context all untouched
+  - TypeScript + ESLint + `npm run build` all clean
+- [x] **P1.0-Phase 3 — Vercel preview deploy QA** ✅ done 2026-04-24
+  - Preview URL `coincanvas-app-git-feat-llm-integration-rcz-05s-projects.vercel.app` built in 27s
+  - Smoke tests: BTC (Mild move, 1.8s), USDT (Stable, 1.9s), PEPE (High volatility, 1.5s), cache hit 95ms — all on primary `gemini-2.5-flash`
+  - Homepage returns 200, existing scan flow unaffected
+- [ ] **P1.0-Phase 4 — Merge to main + prod smoke test** (in progress)
+  - Fast-forward merge (no divergence, clean history)
   - Vercel auto-deploys to prod on `main` push
   - Monitor `vercel logs` for 10 min
   - Instant revert available via `vercel rollback`
@@ -167,3 +160,6 @@ Living document. Update checkboxes as items ship. Keep in sync with the notebook
 | 2026-04-24 | Sprint 5 plan drafted | ✅ |
 | 2026-04-24 | P1.0 LLM engine sub-plan locked (Gemini 2.5 Flash, selective graft from Maya's branch) | ✅ |
 | 2026-04-24 | P1.0-Phase 0: Gemini key provisioned in Vercel (Prod/Preview/Dev) + pulled to .env.local + round-trip verified | ✅ |
+| 2026-04-24 | P1.0-Phase 1: LLM explanation engine + API route committed to feat/llm-integration (2 commits, 5 coin types smoke-tested, ~1.6s primary latency) | ✅ |
+| 2026-04-24 | P1.0-Phase 2: CoinModal AI interpretation card + telemetry events + CSS — build/lint clean | ✅ |
+| 2026-04-24 | P1.0-Phase 3: preview deploy verified (BTC/USDT/PEPE all classified correctly on primary model) | ✅ |
