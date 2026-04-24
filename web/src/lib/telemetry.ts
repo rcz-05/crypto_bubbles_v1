@@ -48,6 +48,24 @@ export type TelemetryEvent =
       recordedAt: string;
       sessionId: string;
       payload: { stepsViewed: number };
+    }
+  | {
+      type: "ai_explanation_loaded";
+      recordedAt: string;
+      sessionId: string;
+      payload: {
+        symbol: string;
+        model: string;
+        is_fallback: boolean;
+        tier: string;
+        time_ms: number;
+      };
+    }
+  | {
+      type: "ai_explanation_failed";
+      recordedAt: string;
+      sessionId: string;
+      payload: { symbol: string; reason: string };
     };
 
 const STORAGE_KEY = "coincanvas-telemetry";

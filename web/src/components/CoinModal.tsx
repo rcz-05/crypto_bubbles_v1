@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CoinContext } from "@/lib/coin-context";
 import { Coin } from "@/lib/coingecko";
+import type { CoinExplanation, ExplanationTier } from "@/lib/explanation";
 import { trackEvent } from "@/lib/telemetry";
 
 type Props = {
@@ -14,6 +15,14 @@ type Props = {
 };
 
 const contextCache = new Map<string, CoinContext>();
+const explanationCache = new Map<string, CoinExplanation>();
+
+const TIER_TONE: Record<ExplanationTier, "calm" | "watch" | "alert"> = {
+  Stable: "calm",
+  "Mild move": "watch",
+  "Active mover": "watch",
+  "High volatility": "alert",
+};
 
 function formatCurrency(value: number | null | undefined) {
   if (value == null) return "n/a";
@@ -46,12 +55,24 @@ function formatRelativeDate(value: string) {
 
 export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props) {
   const cacheKey = coin ? `${coin.id}:${coin.symbol}` : null;
+  const explanationKey = coin
+    ? `${coin.id}:${coin.symbol}:${Math.round((coin.price_change_percentage_24h ?? 0) * 2) / 2}`
+    : null;
   const initialContext = cacheKey ? contextCache.get(cacheKey) ?? null : null;
+  const initialExplanation = explanationKey
+    ? explanationCache.get(explanationKey) ?? null
+    : null;
   const [context, setContext] = useState<CoinContext | null>(initialContext);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">(
     coin ? (initialContext ? "ready" : "loading") : "idle",
   );
   const [error, setError] = useState<string | null>(null);
+  const [explanation, setExplanation] = useState<CoinExplanation | null>(
+    initialExplanation,
+  );
+  const [explanationStatus, setExplanationStatus] = useState<
+    "idle" | "loading" | "ready" | "error"
+  >(coin ? (initialExplanation ? "ready" : "loading") : "idle");
 
   useEffect(() => {
     if (!coin || !cacheKey) return;
@@ -118,6 +139,83 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
 
     return () => controller.abort();
   }, [cacheKey, coin]);
+
+  useEffect(() => {
+    if (!coin || !explanationKey) return;
+
+    const cached = explanationCache.get(explanationKey);
+    if (cached) {
+      // Sync external cache into component state on coin change.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setExplanation(cached);
+      setExplanationStatus("ready");
+      return;
+    }
+
+    const controller = new AbortController();
+    const startedAt = performance.now();
+    setExplanationStatus("loading");
+
+    void fetch("/api/explanation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      cache: "no-store",
+      body: JSON.stringify({
+        coin: {
+          id: coin.id,
+          symbol: coin.symbol,
+          name: coin.name,
+          current_price: coin.current_price,
+          price_change_percentage_24h: coin.price_change_percentage_24h ?? 0,
+          price_change_percentage_1h_in_currency:
+            coin.price_change_percentage_1h_in_currency ?? null,
+          price_change_percentage_7d_in_currency:
+            coin.price_change_percentage_7d_in_currency ?? null,
+          price_change_percentage_30d_in_currency:
+            coin.price_change_percentage_30d_in_currency ?? null,
+          market_cap: coin.market_cap,
+          market_cap_rank: coin.market_cap_rank,
+          total_volume: coin.total_volume,
+          high_24h: coin.high_24h,
+          low_24h: coin.low_24h,
+        },
+        eli5: false,
+      }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Explanation API failed with ${res.status}`);
+        return (await res.json()) as CoinExplanation;
+      })
+      .then((payload) => {
+        explanationCache.set(explanationKey, payload);
+        setExplanation(payload);
+        setExplanationStatus("ready");
+        trackEvent({
+          type: "ai_explanation_loaded",
+          recordedAt: new Date().toISOString(),
+          payload: {
+            symbol: coin.symbol,
+            model: payload.model,
+            is_fallback: payload.isFallback,
+            tier: payload.tier,
+            time_ms: Math.round(performance.now() - startedAt),
+          },
+        });
+      })
+      .catch((err: unknown) => {
+        if (controller.signal.aborted) return;
+        const message = err instanceof Error ? err.message : "Explanation failed";
+        setExplanationStatus("error");
+        trackEvent({
+          type: "ai_explanation_failed",
+          recordedAt: new Date().toISOString(),
+          payload: { symbol: coin.symbol, reason: message },
+        });
+      });
+
+    return () => controller.abort();
+  }, [coin, explanationKey]);
 
   const stableClose = useCallback(() => {
     onClose();
@@ -190,6 +288,92 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
             </button>
           </div>
         </div>
+
+        <section className="context-card ai-interp-card">
+          <div className="context-section-header">
+            <div>
+              <p className="section-label">AI interpretation</p>
+              <h3>
+                Plain-English read on the move
+                {explanation && !explanation.isFallback ? (
+                  <span
+                    className="ai-badge"
+                    title={`Generated by ${explanation.model}. The content is AI-produced from the numeric data shown below.`}
+                  >
+                    🪄 AI-generated
+                  </span>
+                ) : explanation && explanation.isFallback ? (
+                  <span
+                    className="ai-badge fallback"
+                    title="AI model was unreachable. Showing a deterministic read computed directly from the numbers."
+                  >
+                    ⚙️ Numeric fallback
+                  </span>
+                ) : null}
+              </h3>
+            </div>
+            {explanation ? (
+              <span className={`tier-chip ${TIER_TONE[explanation.tier]}`}>
+                {explanation.tier}
+              </span>
+            ) : null}
+          </div>
+
+          {explanationStatus === "loading" ? (
+            <div className="context-loading">
+              <div className="loading-bar short" />
+              <div className="loading-bar" />
+              <div className="loading-bar medium" />
+            </div>
+          ) : explanationStatus === "error" || !explanation ? (
+            <p className="context-copy muted">
+              AI interpretation unavailable right now. The verified market data
+              below is still usable.
+            </p>
+          ) : (
+            <>
+              <p className="context-copy">{explanation.summary}</p>
+
+              {explanation.watchNotes.length > 0 ? (
+                <ul className="watch-note-list">
+                  {explanation.watchNotes.map((note) => (
+                    <li key={note.label} className="watch-note">
+                      <strong>{note.label}</strong>
+                      <span>{note.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+              <div className="trust-source-row">
+                <span className="trust-chip high">
+                  <span className="trust-dot" aria-hidden />
+                  CoinGecko market data
+                  <small>trust · high</small>
+                </span>
+                <a
+                  className="trust-source-link"
+                  href={`https://www.coingecko.com/en/coins/${coin.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() =>
+                    trackEvent({
+                      type: "source_opened",
+                      recordedAt: new Date().toISOString(),
+                      payload: {
+                        symbol: coin.symbol,
+                        url: `https://www.coingecko.com/en/coins/${coin.id}`,
+                        label: "CoinGecko (AI source)",
+                      },
+                    })
+                  }
+                >
+                  Open source →
+                </a>
+              </div>
+            </>
+          )}
+        </section>
 
         <div className="context-grid">
           <section className="context-card accent">
