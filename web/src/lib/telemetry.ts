@@ -73,6 +73,12 @@ export type TelemetryEvent =
       recordedAt: string;
       sessionId: string;
       payload: { symbol: string; value: boolean };
+    }
+  | {
+      type: "favorite_opened";
+      recordedAt: string;
+      sessionId: string;
+      payload: { symbol: string; source: "favorites_page" | "bubble_board" };
     };
 
 const STORAGE_KEY = "coincanvas-telemetry";

@@ -442,9 +442,33 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     cursorRef.current = null;
   }, []);
 
-  /* ---- click with pop ---- */
+  /* ---- pointer-down/up tracker for drag-vs-click detection ---- */
+  const pointerDownRef = useRef<{ x: number; y: number; time: number } | null>(
+    null,
+  );
+  const CLICK_DRAG_THRESHOLD_PX = 6;
+
+  const handlePointerDownCapture = useCallback((e: React.PointerEvent) => {
+    pointerDownRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      time: performance.now(),
+    };
+  }, []);
+
+  /* ---- click with pop, gated by drag threshold ---- */
   const handleBubbleClick = useCallback(
-    (coin: Coin, index: number) => {
+    (coin: Coin, index: number, e: React.MouseEvent) => {
+      const down = pointerDownRef.current;
+      pointerDownRef.current = null;
+      if (down) {
+        const dx = e.clientX - down.x;
+        const dy = e.clientY - down.y;
+        if (Math.hypot(dx, dy) > CLICK_DRAG_THRESHOLD_PX) {
+          // Treat as drag, not a click — bail without opening modal
+          return;
+        }
+      }
       popRef.current[index] = performance.now();
       onSelect(coin);
     },
@@ -482,6 +506,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
       aria-label="Crypto market bubble chart"
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
+      onPointerDownCapture={handlePointerDownCapture}
       style={{ touchAction: "pan-y" }}
     >
       <defs>
@@ -527,7 +552,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
             key={coin.id}
             ref={setGRef(i)}
             transform={`translate(${node.x},${node.y})`}
-            onClick={() => handleBubbleClick(coin, i)}
+            onClick={(e) => handleBubbleClick(coin, i, e)}
             className="bubble-node"
             style={{ cursor: "pointer" }}
           >
