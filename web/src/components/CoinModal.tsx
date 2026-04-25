@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ProWaitlistModal } from "@/components/ProWaitlistModal";
 import { CoinContext } from "@/lib/coin-context";
 import { Coin } from "@/lib/coingecko";
 import type { CoinExplanation, ExplanationTier } from "@/lib/explanation";
@@ -57,6 +58,7 @@ function formatRelativeDate(value: string) {
 export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props) {
   const variant = useVariant();
   const eli5 = variant === "b";
+  const [proWaitlistOpen, setProWaitlistOpen] = useState(false);
 
   const cacheKey = coin ? `${coin.id}:${coin.symbol}` : null;
   const explanationKey = coin
@@ -227,6 +229,20 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
     onClose();
   }, [onClose]);
 
+  const handleProIntent = useCallback(() => {
+    if (!coin) return;
+    trackEvent({
+      type: "premium_intent_clicked",
+      recordedAt: new Date().toISOString(),
+      payload: {
+        variant,
+        symbol: coin.symbol,
+        source: "coin_modal",
+      },
+    });
+    setProWaitlistOpen(true);
+  }, [coin, variant]);
+
   useEffect(() => {
     if (!coin) return;
     const handler = (e: KeyboardEvent) => {
@@ -386,6 +402,44 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
               </div>
             </div>
           ) : null}
+        </section>
+
+        <section className="context-card pro-lock-card" aria-labelledby="pro-lock-title">
+          <div className="pro-lock-copy">
+            <p className="section-label">Pro insights</p>
+            <h3 id="pro-lock-title">Deeper context for repeat users</h3>
+            <p>
+              Free users keep the current AI read. Pro would add broader
+              pattern context for people who return often.
+            </p>
+          </div>
+
+          <div className="pro-preview-wrap" aria-hidden>
+            <div className="pro-preview-blur">
+              <div className="pro-preview-row">
+                <span>7d / 30d narrative</span>
+                <strong>Momentum cooling after a larger monthly move</strong>
+              </div>
+              <div className="pro-preview-row">
+                <span>Cross-coin pattern</span>
+                <strong>Move compared with similar market-cap peers</strong>
+              </div>
+              <div className="pro-preview-row">
+                <span>Follow-up reading</span>
+                <strong>Suggested sources for a deeper beginner review</strong>
+              </div>
+            </div>
+            <div className="pro-preview-overlay">
+              <span className="pro-price-pill">$2/mo beta signal</span>
+              <button
+                className="refresh-btn"
+                type="button"
+                onClick={handleProIntent}
+              >
+                Unlock Pro insights - $2/mo
+              </button>
+            </div>
+          </div>
         </section>
 
         <div className="context-grid">
@@ -565,6 +619,14 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
           </div>
         </section>
       </div>
+
+      <ProWaitlistModal
+        open={proWaitlistOpen}
+        variant={variant}
+        source="coin_modal"
+        symbol={coin.symbol}
+        onClose={() => setProWaitlistOpen(false)}
+      />
     </div>
   );
 }

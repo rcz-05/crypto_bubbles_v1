@@ -1,20 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
+import { ProWaitlistModal } from "@/components/ProWaitlistModal";
 import { loadLocalFavorites } from "@/lib/favorites";
 import {
   clearTelemetry,
   exportTelemetryPayload,
   loadTelemetry,
+  trackEvent,
   TelemetryEvent,
 } from "@/lib/telemetry";
+import { useVariant } from "@/lib/variant";
 import { resetOnboarding } from "@/components/OnboardingOverlay";
 
 export default function SettingsPage() {
   const [events, setEvents] = useState<TelemetryEvent[]>(() => loadTelemetry());
   const [favoriteCount] = useState(() => loadLocalFavorites().length);
   const [downloadState, setDownloadState] = useState<"idle" | "done">("idle");
+  const [proWaitlistOpen, setProWaitlistOpen] = useState(false);
+  const variant = useVariant();
 
   const summary = useMemo(() => {
     const contextLoads = events.filter(
@@ -59,6 +64,18 @@ export default function SettingsPage() {
     setEvents([]);
     setDownloadState("idle");
   };
+
+  const handleProIntent = useCallback(() => {
+    trackEvent({
+      type: "premium_intent_clicked",
+      recordedAt: new Date().toISOString(),
+      payload: {
+        variant,
+        source: "settings",
+      },
+    });
+    setProWaitlistOpen(true);
+  }, [variant]);
 
   return (
     <div className="app-shell">
@@ -159,6 +176,20 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          <div className="list-card pro-settings-card">
+            <div>
+              <div style={{ fontWeight: 700 }}>CoinCanvas Pro</div>
+              <div style={{ color: "var(--muted)" }}>
+                Planned $2/mo tier for deeper 7d/30d narratives, cross-coin
+                pattern context, and suggested follow-up reading. Pro features
+                are not built yet; this card measures demand.
+              </div>
+            </div>
+            <button className="refresh-btn" type="button" onClick={handleProIntent}>
+              Join Pro waitlist
+            </button>
+          </div>
+
           <div className="list-card">
             <div>
               <div style={{ fontWeight: 700 }}>Export raw data</div>
@@ -218,6 +249,13 @@ export default function SettingsPage() {
           </div>
         </div>
       </main>
+
+      <ProWaitlistModal
+        open={proWaitlistOpen}
+        variant={variant}
+        source="settings"
+        onClose={() => setProWaitlistOpen(false)}
+      />
     </div>
   );
 }

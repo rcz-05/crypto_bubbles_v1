@@ -120,6 +120,28 @@ export type TelemetryEvent =
       recordedAt: string;
       sessionId: string;
       payload: { variant: "a" | "b"; symbol: string; value: 1 | 2 | 3 | 4 | 5 };
+    }
+  | {
+      type: "premium_intent_clicked";
+      recordedAt: string;
+      sessionId: string;
+      payload: {
+        variant: "a" | "b";
+        source: "coin_modal" | "settings";
+        symbol?: string;
+      };
+    }
+  | {
+      type: "premium_waitlist_submitted";
+      recordedAt: string;
+      sessionId: string;
+      payload: {
+        variant: "a" | "b";
+        source: "coin_modal" | "settings";
+        providedEmail: boolean;
+        symbol?: string;
+        email?: string;
+      };
     };
 
 const STORAGE_KEY = "coincanvas-telemetry";

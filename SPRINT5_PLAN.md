@@ -158,19 +158,19 @@ The ONLY thing that varies between A and B is the language style of the LLM-gene
 
 ### Phase C — monetization implementation (class hard requirement)
 
-- [ ] **C1 — Pick + scaffold the gated feature: "Pro insights"**
+- [x] **C1 — Pick + scaffold the gated feature: "Pro insights"** ✅ shipped 2026-04-25
   - Free users see the current AI card
   - Pro users would see a deeper card with: 7d/30d narrative, cross-coin pattern context, suggested follow-up reading
   - For Sprint 5: build the locked-state UI only — the deeper card is Wizard-of-Oz (real implementation deferred post-Sprint 5)
   - Locked-state UI shows a blurred preview + 🔒 "Unlock Pro insights — $2/mo" button
 
-- [ ] **C2 — Intent capture flow**
+- [x] **C2 — Intent capture flow** ✅ shipped 2026-04-25
   - Clicking the upsell opens a modal: "Pro is in beta — join the waitlist"
   - Optional email field (skippable)
   - Telemetry: `premium_intent_clicked` (variant, coin, source location), `premium_waitlist_submitted` (with email if provided)
   - **Wizard-of-Oz disclosure**: modal explicitly says "Pro features aren't built yet — your interest helps us prioritize"
 
-- [ ] **C3 — Premium prompt on Settings page**
+- [x] **C3 — Premium prompt on Settings page** ✅ shipped 2026-04-25
   - One discoverable card on `/settings` describing the planned Pro tier
   - Same waitlist CTA
 
@@ -353,3 +353,4 @@ Hits every Sprint 5 rubric line: end-to-end, real services, real data, A/B test 
 | 2026-04-25 | Phase B sub-plan locked: single-variable A/B (standard vs plain-English language), 4 B-items + telemetry verification | ✅ |
 | 2026-04-25 | Pre-Phase-B: sharpened both system prompts so the variants are sharply differentiated (Standard now uses pro-trader vocabulary: drawdown / turnover ratio / distribution / capitulation; ELI5 explicitly bans 17+ jargon terms and forces dollar-translation of percentages). Verified on prod with ETH and SOL — A/B contrast is now production-grade. | ✅ |
 | 2026-04-25 | Phase B shipped: deterministic session variant assignment, `?variant=a/b` override, CoinModal locked to assigned language style, ELI5 toggle hidden during test, post-close comprehension/trust survey mounted on canvas + favorites, variant included in telemetry export | ✅ |
+| 2026-04-25 | Phase C shipped: Pro insights locked preview in CoinModal, reusable beta waitlist modal with Wizard-of-Oz disclosure, Settings Pro card, premium intent + waitlist telemetry | ✅ |
