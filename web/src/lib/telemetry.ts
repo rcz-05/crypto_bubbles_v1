@@ -142,6 +142,61 @@ export type TelemetryEvent =
         symbol?: string;
         email?: string;
       };
+    }
+  | {
+      type: "pro_checkout_opened";
+      recordedAt: string;
+      sessionId: string;
+      payload: {
+        variant: "a" | "b";
+        source: "coin_modal" | "settings";
+        symbol?: string;
+      };
+    }
+  | {
+      type: "pro_checkout_canceled";
+      recordedAt: string;
+      sessionId: string;
+      payload: {
+        variant: "a" | "b";
+        source: "coin_modal" | "settings";
+        symbol?: string;
+      };
+    }
+  | {
+      type: "pro_subscribed";
+      recordedAt: string;
+      sessionId: string;
+      payload: {
+        withTrial: boolean;
+        priceUsd: number;
+      };
+    }
+  | {
+      type: "pro_canceled";
+      recordedAt: string;
+      sessionId: string;
+      payload: {
+        reason: "user" | "override";
+        since: string | null;
+      };
+    }
+  | {
+      type: "pro_explanation_loaded";
+      recordedAt: string;
+      sessionId: string;
+      payload: {
+        symbol: string;
+        model: string;
+        is_fallback: boolean;
+        time_ms: number;
+      };
+    }
+  | {
+      type: "pro_explanation_failed";
+      recordedAt: string;
+      sessionId: string;
+      payload: { symbol: string; reason: string };
     };
 
 const STORAGE_KEY = "coincanvas-telemetry";
