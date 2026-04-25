@@ -114,7 +114,7 @@ export function EventStream({ events }: { events: AdminEvent[] }) {
               fontSize: "0.84rem",
             }}
           >
-            No events yet — visit the main app to populate, or seed demo data
+            No events to display. Open the main app or restore the baseline
             from the controls panel.
           </div>
         ) : (

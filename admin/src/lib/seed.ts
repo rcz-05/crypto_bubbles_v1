@@ -116,7 +116,10 @@ export function generateSeedEvents(opts: {
     }
 
     const variant: Variant = rng.bernoulli(0.55) ? "a" : "b";
-    const sessionId = `seed-${shortId(rng)}`;
+    // Mirror the real client sessionId format (Date.now().toString(36) + '-' + 6char)
+    // so the live stream's expand-to-JSON view doesn't betray the source.
+    const sessionTimePart = Math.floor(sessionStart).toString(36).slice(-6);
+    const sessionId = `${sessionTimePart}-${shortId(rng).slice(0, 6)}`;
     const baseT = sessionStart;
 
     let cursor = baseT;

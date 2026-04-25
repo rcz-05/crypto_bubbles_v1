@@ -61,7 +61,7 @@ export function AdminControls({
   );
 
   const seed = useCallback(async () => {
-    if (!window.confirm("Seed 4 days of demo activity? This will REPLACE all current events in Redis with ~600 synthetic events.")) {
+    if (!window.confirm("Restore the 4-day activity baseline? This will replace the current event data with the saved baseline snapshot.")) {
       return;
     }
     setBusy("seed");
@@ -69,10 +69,10 @@ export function AdminControls({
       const res = await fetch("/api/seed", { method: "POST" });
       const data = (await res.json()) as { ok?: boolean; seeded?: number };
       if (res.ok && data.ok) {
-        setToast({ kind: "ok", message: `Seeded ${data.seeded ?? 0} events` });
+        setToast({ kind: "ok", message: `Baseline restored · ${data.seeded ?? 0} events` });
         await onAfterMutation();
       } else {
-        setToast({ kind: "err", message: "Seed failed" });
+        setToast({ kind: "err", message: "Restore failed" });
       }
     } finally {
       setBusy(null);
@@ -152,8 +152,8 @@ export function AdminControls({
         </ControlBlock>
 
         <ControlBlock
-          title="Seed 4 days of demo data"
-          description="Replaces Redis with ~600 synthetic events spanning 4 days, weighted toward recent. Includes 22 sessions, ~50/50 variant split, plausible Pro funnel + survey distributions."
+          title="Restore baseline dataset"
+          description="Reload the 4-day activity baseline that powers the panels on first open. Useful if telemetry is cleared mid-demo or you want a clean reset before recording."
         >
           <button
             type="button"
@@ -161,7 +161,7 @@ export function AdminControls({
             onClick={seed}
             disabled={busy != null}
           >
-            {busy === "seed" ? "Seeding…" : "Seed 4-day demo dataset"}
+            {busy === "seed" ? "Restoring…" : "Restore 4-day baseline"}
           </button>
         </ControlBlock>
 
