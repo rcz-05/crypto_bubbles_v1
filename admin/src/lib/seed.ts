@@ -96,11 +96,24 @@ export function generateSeedEvents(opts: {
 
   const events: SeedEvent[] = [];
 
+  // Carve out the last 5 sessions to land in the last 45 min so the
+  // Activity panel + active-session count show fresh data on demo time.
+  const FRESH_SESSIONS = Math.min(5, Math.floor(sessionCount * 0.22));
+  const fortyFiveMinMs = 45 * 60 * 1000;
+
   for (let s = 0; s < sessionCount; s++) {
-    // Sessions weighted toward recent: skew with cubic toward 1.
-    const u = rng.next();
-    const skewed = 1 - Math.pow(1 - u, 3);
-    const sessionStart = now - fourDaysMs * skewed;
+    let sessionStart: number;
+    if (s < FRESH_SESSIONS) {
+      // Spread across last 45 minutes; one of them within the last 5 min for
+      // the "active sessions" count to be non-zero.
+      const offset = s === 0 ? rng.pickFloat(0, 4) * 60 * 1000 : rng.pickFloat(0, fortyFiveMinMs);
+      sessionStart = now - offset;
+    } else {
+      // Older sessions weighted toward recent: skew with cubic toward 1.
+      const u = rng.next();
+      const skewed = 1 - Math.pow(1 - u, 3);
+      sessionStart = now - fourDaysMs * skewed;
+    }
 
     const variant: Variant = rng.bernoulli(0.55) ? "a" : "b";
     const sessionId = `seed-${shortId(rng)}`;
