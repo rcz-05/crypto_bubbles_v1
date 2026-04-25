@@ -49,10 +49,19 @@ Living document. Update checkboxes as items ship. Keep in sync with the notebook
   - prefers-reduced-motion respected; mobile breakpoint reflows the toggle row
   - Verified on prod: ELI5=true on ETH → "Ethereum's price went down by a small amount today. This is after it had gone up over the last week and month." vs standard analyst framing
 
-- [ ] **A2 — Click target cleanup** *(addresses Sankar: clickbox misfires on favorites)*
-  - Audit `BubbleChart.tsx` favorite toggle: ensure click is rejected if pointer moved >threshold between mousedown and mouseup
-  - Tighten hit area or add a small explicit favorite button if needed
-  - Acceptance: dragging across a bubble during physics drift never adds it to favorites
+- [x] **A2 — Click target cleanup + Favorites dashboard rewrite** ✅ shipped to prod 2026-04-25
+  - **A2.1 click guard**: BubbleChart now tracks pointerdown coords on the SVG via `onPointerDownCapture`; `handleBubbleClick` rejects clicks where the pointer moved >6px between down and up — kills drift-induced accidental modal opens that Sankar flagged
+  - **A2.3 favorites redesign** (scope expanded from "loose end" to "make the page actually useful per user direction"):
+    - Replaced passive memo list with a personal dashboard
+    - Header summary strip: count, up/down/flat, average 24h change, biggest mover
+    - Sort control: recently added / biggest gainer / biggest loser / alphabetical
+    - Card grid with live data joined from `useMarketStore`: coin icon, symbol, name, live price, 24h change pill, edge stripe colored + sized by change magnitude, "Saved Xh ago" meta, hover-revealed remove button (✕) and "See AI take →" CTA
+    - Tap a card → opens the SAME `CoinModal` from the bubble board (full AI interpretation, ELI5 toggle, evidence drawer, trust chip)
+    - Stale-favorite handling: coins outside top-100 show "stale" badge with disabled tap (Phase A3 custom-coin search will resolve fully)
+    - Empty state with clear CTA back to canvas
+    - Staggered fade-in, hover lift, prefers-reduced-motion respected, mobile-responsive
+  - New telemetry event `favorite_opened` with `source` field (`favorites_page` vs future `bubble_board`)
+  - Build + lint + TS clean, prod regression checked on `/api/explanation`
 
 - [ ] **A3 — Custom coin search + pin** *(addresses Sankar: users want coins beyond top 100)*
   - Use CoinGecko `/api/v3/coins/list` (cached server-side) for autocomplete
@@ -281,3 +290,4 @@ Hits every Sprint 5 rubric line: end-to-end, real services, real data, A/B test 
 | 2026-04-24 | P1.0-Phase 5: local branch cleaned up, Maya credit note drafted for notebook | ✅ |
 | 2026-04-25 | Plan re-sequenced: Phase A → E (UX wins → A/B infra → monetization → ops dashboard → PWA), notebook + video deferred to post-dev | ✅ |
 | 2026-04-25 | Phase A1: ELI5 toggle shipped to prod (segmented pill + warm tint + refresh state, localStorage persistence, telemetry) | ✅ |
+| 2026-04-25 | Phase A2: BubbleChart click threshold (6px drag-vs-click guard) + favorites page rewritten as a live, modal-launching dashboard with summary stats, sort, edge-stripe cards, stale handling, telemetry | ✅ |
