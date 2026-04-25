@@ -2811,6 +2811,114 @@ button {
   background: #2c4f7d;
 }
 
+/* ---- Bubble pager — mobile pagination (Phase D-mobile-1) ---- */
+
+.bubble-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  margin: 8px 0 6px;
+  border-radius: 14px;
+  background: rgba(24, 33, 40, 0.04);
+  border: 1px solid rgba(24, 33, 40, 0.1);
+}
+
+.bubble-pager-chev {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(24, 33, 40, 0.12);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform 100ms ease, background 160ms ease;
+  font-family: inherit;
+  line-height: 1;
+}
+
+.bubble-pager-chev:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.bubble-pager-chev:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.bubble-pager-center {
+  display: grid;
+  grid-template-rows: auto auto;
+  justify-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.bubble-pager-label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  text-align: center;
+}
+
+.bubble-pager-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.bubble-pager-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(24, 33, 40, 0.18);
+  padding: 0;
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.bubble-pager-dot.active {
+  background: var(--text);
+  transform: scale(1.25);
+}
+
+.bubble-pager-count {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  position: absolute;
+  visibility: hidden;
+}
+
+@media (max-width: 480px) {
+  .bubble-pager-label {
+    font-size: 0.78rem;
+  }
+  .bubble-pager-chev {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble-pager-chev,
+  .bubble-pager-dot {
+    transition: none;
+  }
+}
+
 /* ---- Favorites dashboard (Phase A2.3) ---- */
 
 .favorites-summary {

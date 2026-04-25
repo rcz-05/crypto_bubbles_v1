@@ -198,6 +198,16 @@ export type TelemetryEvent =
       recordedAt: string;
       sessionId: string;
       payload: { symbol: string; reason: string };
+    }
+  | {
+      type: "bubble_page_changed";
+      recordedAt: string;
+      sessionId: string;
+      payload: {
+        from: number;
+        to: number;
+        timeframe: "1h" | "24h" | "7d" | "30d" | "market_cap";
+      };
     };
 
 const STORAGE_KEY = "coincanvas-telemetry";

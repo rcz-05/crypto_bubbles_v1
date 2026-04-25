@@ -3,9 +3,11 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BubbleChart } from "@/components/BubbleChart";
+import { BubblePager } from "@/components/BubblePager";
 import { CoinModal } from "@/components/CoinModal";
 import { useMarketStore } from "@/store/market";
 import { useFavoritesStore } from "@/store/favorites";
+import { useBubblePagination } from "@/hooks/useBubblePagination";
 import { useMeasure } from "@/hooks/useMeasure";
 import { useShakeRefresh, requestMotionPermission } from "@/hooks/useShakeRefresh";
 import { Coin, TimeFrame, getChangeForTimeFrame } from "@/lib/coingecko";
@@ -57,6 +59,27 @@ export default function HomePage() {
       (c) => c.name.toLowerCase().includes(term) || c.symbol.toLowerCase().includes(term),
     );
   }, [coins, deferredSearch]);
+
+  const {
+    pagedCoins,
+    page,
+    totalPages,
+    isMobile,
+    setPage,
+  } = useBubblePagination(filtered, timeFrame);
+
+  const handlePageChange = useCallback(
+    (next: number) => {
+      if (next === page) return;
+      trackEvent({
+        type: "bubble_page_changed",
+        recordedAt: new Date().toISOString(),
+        payload: { from: page, to: next, timeframe: timeFrame },
+      });
+      setPage(next);
+    },
+    [page, setPage, timeFrame],
+  );
 
   const handleRefresh = useCallback(() => {
     void fetchCoins();
@@ -290,13 +313,22 @@ export default function HomePage() {
             </div>
           </div>
 
+          {isMobile ? (
+            <BubblePager
+              page={page}
+              totalPages={totalPages}
+              timeFrame={timeFrame}
+              onChange={handlePageChange}
+            />
+          ) : null}
+
           <div ref={ref} className="board">
           {filtered.length === 0 && status !== "loading" ? (
             <div className="ghost">No coins match that search.</div>
           ) : null}
 
           <BubbleChart
-            data={filtered}
+            data={pagedCoins}
             width={drawWidth}
             height={drawHeight}
             timeFrame={timeFrame}
