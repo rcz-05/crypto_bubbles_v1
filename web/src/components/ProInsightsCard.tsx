@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CoinDetailPayload } from "@/app/api/coin-detail/route";
+import type { CoinDetailPayload } from "@/lib/coingecko-detail";
 import type { Coin } from "@/lib/coingecko";
 import type { PeerBenchmark, VolatilityProfile } from "@/lib/peer-benchmark";
 import type { ProNarrative } from "@/lib/pro-explanation";
+import type { ProSignal, Verdict } from "@/lib/pro-signal";
 import { trackEvent } from "@/lib/telemetry";
 
 type Props = {
@@ -15,6 +16,13 @@ type ProPayload = {
   narrative: ProNarrative;
   benchmark: PeerBenchmark;
   volatility: VolatilityProfile;
+  signal: ProSignal;
+};
+
+const VERDICT_TONE: Record<Verdict, "buy" | "hodl" | "sell"> = {
+  BUY: "buy",
+  HODL: "hodl",
+  SELL: "sell",
 };
 
 const proCache = new Map<string, ProPayload>();
@@ -163,6 +171,117 @@ export function ProInsightsCard({ coin }: Props) {
         </p>
       ) : payload ? (
         <div className="pro-active-body">
+          <div
+            className={`pro-signal-card verdict-${VERDICT_TONE[payload.signal.verdict]}`}
+            role="group"
+            aria-labelledby="pro-signal-title"
+          >
+            <div className="pro-signal-head">
+              <div>
+                <p className="section-label">Pro signal</p>
+                <h4 id="pro-signal-title">
+                  <span className={`pro-verdict-pill verdict-${VERDICT_TONE[payload.signal.verdict]}`}>
+                    {payload.signal.verdict}
+                  </span>
+                  <span className="pro-confidence-chip">
+                    {payload.signal.confidence} confidence
+                  </span>
+                </h4>
+              </div>
+              <div className="pro-distribution-numbers">
+                <div className="pro-dist-cell buy">
+                  <span>BUY</span>
+                  <strong>{payload.signal.distribution.buy}%</strong>
+                </div>
+                <div className="pro-dist-cell hodl">
+                  <span>HODL</span>
+                  <strong>{payload.signal.distribution.hodl}%</strong>
+                </div>
+                <div className="pro-dist-cell sell">
+                  <span>SELL</span>
+                  <strong>{payload.signal.distribution.sell}%</strong>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="pro-gauge"
+              role="img"
+              aria-label={`Distribution: BUY ${payload.signal.distribution.buy}%, HODL ${payload.signal.distribution.hodl}%, SELL ${payload.signal.distribution.sell}%`}
+            >
+              <div
+                className="pro-gauge-seg seg-buy"
+                style={{ width: `${payload.signal.distribution.buy}%` }}
+              />
+              <div
+                className="pro-gauge-seg seg-hodl"
+                style={{ width: `${payload.signal.distribution.hodl}%` }}
+              />
+              <div
+                className="pro-gauge-seg seg-sell"
+                style={{ width: `${payload.signal.distribution.sell}%` }}
+              />
+            </div>
+
+            <p className="pro-signal-rationale">
+              {payload.narrative.recommendationRationale}
+            </p>
+
+            <div className="pro-signal-disclaimer">
+              <span className="pro-disclaimer-dot" aria-hidden />
+              Educational signal · not financial advice. Crypto markets are
+              volatile; past performance does not predict future returns.
+            </div>
+
+            <details className="pro-signal-breakdown">
+              <summary>Signal breakdown · how this verdict was computed</summary>
+              <div className="pro-component-list">
+                {payload.signal.components.map((c) => (
+                  <div
+                    key={c.name}
+                    className={`pro-component-row dir-${c.direction}`}
+                  >
+                    <div className="pro-component-meta">
+                      <strong>{c.name}</strong>
+                      <span className="pro-component-tags">
+                        <span className={`pro-component-dir dir-${c.direction}`}>
+                          {c.direction === "buy"
+                            ? "buy bias"
+                            : c.direction === "sell"
+                              ? "sell bias"
+                              : c.direction === "hodl"
+                                ? "hodl bias"
+                                : "neutral"}
+                        </span>
+                        <span className="pro-component-weight">
+                          weight {c.weight}%
+                        </span>
+                      </span>
+                    </div>
+                    <div className="pro-component-score-row">
+                      <div className="pro-component-score-bar">
+                        <div
+                          className={`pro-component-score-fill dir-${c.direction}`}
+                          style={{ width: `${c.score}%` }}
+                        />
+                        <div
+                          className="pro-component-score-mid"
+                          aria-hidden
+                        />
+                      </div>
+                      <strong className="pro-component-score-num">
+                        {c.score}
+                      </strong>
+                    </div>
+                    <p className="pro-component-interp">{c.interpretation}</p>
+                  </div>
+                ))}
+              </div>
+            </details>
+          </div>
+
+          <div className="pro-section-divider" />
+
           <div className="pro-narrative">
             <p className="pro-narrative-headline">{payload.narrative.headline}</p>
             <p className="context-copy">{payload.narrative.multiHorizon}</p>

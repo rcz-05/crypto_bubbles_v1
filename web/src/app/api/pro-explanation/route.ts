@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCoinDetail } from "@/lib/coingecko-detail";
 import {
   fetchCoinGeckoMarketSnapshot,
   getCoinByQuery,
@@ -12,6 +13,7 @@ import {
   generateProNarrative,
   type ProNarrative,
 } from "@/lib/pro-explanation";
+import { computeProSignal, type ProSignal } from "@/lib/pro-signal";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -23,6 +25,8 @@ type CacheEntry = {
   narrative: ProNarrative;
   benchmark: ReturnType<typeof buildPeerBenchmark>;
   volatility: ReturnType<typeof buildVolatilityProfile>;
+  signal: ProSignal;
+  sentimentUpPct: number | null;
   timestamp: number;
 };
 
@@ -76,7 +80,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const cacheKey = buildProCacheKey(self);
+  const detail = await getCoinDetail(self.id);
+  const sentimentUpPct = detail.data.community.sentimentUpPct;
+
+  const cacheKey = buildProCacheKey(self, sentimentUpPct);
   const now = Date.now();
   pruneCache(now);
 
@@ -87,6 +94,7 @@ export async function POST(req: Request) {
         narrative: cached.narrative,
         benchmark: cached.benchmark,
         volatility: cached.volatility,
+        signal: cached.signal,
       },
       {
         headers: {
@@ -99,22 +107,38 @@ export async function POST(req: Request) {
 
   const benchmark = buildPeerBenchmark(self, universe);
   const volatility = buildVolatilityProfile(self, benchmark);
+  const signal = computeProSignal({
+    coin: self,
+    benchmark,
+    volatility,
+    sentimentUpPct,
+  });
 
   const narrative: ProNarrative = await generateProNarrative(
     self,
     benchmark,
     volatility,
+    signal,
+    sentimentUpPct,
   );
 
-  cache.set(cacheKey, { narrative, benchmark, volatility, timestamp: now });
+  cache.set(cacheKey, {
+    narrative,
+    benchmark,
+    volatility,
+    signal,
+    sentimentUpPct,
+    timestamp: now,
+  });
 
   return NextResponse.json(
-    { narrative, benchmark, volatility },
+    { narrative, benchmark, volatility, signal },
     {
       headers: {
         "Cache-Control": "s-maxage=600, stale-while-revalidate=120",
         "X-Pro-Cache": "miss",
         "X-Pro-Source": narrative.isFallback ? "deterministic" : "llm",
+        "X-Pro-Verdict": signal.verdict,
       },
     },
   );
