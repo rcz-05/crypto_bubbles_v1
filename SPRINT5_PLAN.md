@@ -25,37 +25,135 @@ Living document. Update checkboxes as items ship. Keep in sync with the notebook
 - **Sankar**: clickbox accidentally toggles favorites; users want to add custom coins beyond top 100.
 - **Krissh / Aditya**: isolate which sub-feature drove the Sprint 4 gain; scale N.
 
-## Scope, tiered
+## Development sequence (locked 2026-04-25)
 
-### P0 — grade-critical, must ship
+> **Ordering rule**: app development first (Phases A → D), then PWA polish (Phase E), then non-code deliverables (notebook + video). Earlier P0/P1/P2 priority list has been superseded by this phase plan; original tier descriptions are preserved further down for reference.
 
-- [ ] **P0.1 PWA polish (our 2nd platform)**
-  - Complete `manifest.ts` — icons (192/512), theme/background color, display `standalone`, start_url, scope
-  - Service worker — offline app shell + cache last-good `/api/market` snapshot so cold launch works without network
-  - iOS `apple-touch-icon` + `apple-mobile-web-app-*` meta tags
-  - Verify: installs cleanly on iOS Safari and Android Chrome, launches as standalone, works offline after first load
-- [ ] **P0.2 Redo A/B test with equivalent variants**
-  - **Variant A**: current LLM summary baseline
-  - **Variant B**: LLM summary **+ per-source trust tags + "AI-generated" badge + ELI5 language toggle**
-  - Isolates *framing quality*, not feature presence/absence. Addresses TA methodology critique + Krissh's "isolate the variable" note.
-- [ ] **P0.3 Scale user testing**
-  - Target N = 10–12 participants, balanced across novice / intermediate
-  - Keep the 0–2 comprehension rubric and 1–5 trust scale from Sprint 4 so we can compare longitudinally
-- [ ] **P0.4 Notebook fixes**
-  - Color-coded BMC (users vs customers differentiated)
-  - Explicit user-flow diagram (Figma or draw.io → PNG)
-  - Feature analysis table (ranked, with ranking methodology explained)
-  - 3-min product video, narrative framing ("Maya is a novice…" style arc), minimal zoom
-  - Updated team agreement if processes changed this sprint
+### Why this order
 
-### P1 — high-leverage implementation (also becomes Variant B of the A/B test)
+1. **A before B** — Variant B of the A/B test physically requires the ELI5 toggle. Building B without A leaves it incomplete.
+2. **B before C** — monetization upsell becomes its own dependent variable; we want it deployed AFTER variant routing exists so click data is automatically split A/B.
+3. **C is P0, not P2** — class hard-requires monetization in code when BMC depends on it: *"Any projects who's viability depends on advertising, paid features, or in-app purchases needs to include these into the design and implementation in this Sprint."*
+4. **D before E** — ops dashboard is one of the four officially-listed 2nd-platform options and provides demo-time live data. Building it before PWA gives us two viable 2nd-platform stories.
+5. **E last** — PWA is polish on a complete app. Easier to install-test the finished product than re-validate PWA behavior on top of moving features.
 
-- [x] **P1.0 LLM explanation engine** ✅ shipped to prod 2026-04-24 — per-coin AI-generated summary using CoinGecko data only. Foundation for P1.1–P1.3. See sub-plan below.
-- [ ] **P1.1 Per-source trust tags** — heuristic tier (high / medium / low) based on source domain; visible chip on each citation in the evidence drawer
-- [ ] **P1.2 "AI-generated" badge** — explicit label on the summary block so users know what's LLM output vs. verified data
-- [ ] **P1.3 ELI5 / novice language toggle** — second system prompt that forces plain wording and avoids jargon; user-flippable switch
-- [ ] **P1.4 Add custom coin** — search + pin for coins beyond top 100
-- [ ] **P1.5 Click target cleanup** — verify favorite toggle doesn't misfire on drag/drift (Sankar's complaint)
+### Phase A — quick peer-feedback wins (foundation for richer A/B test)
+
+- [ ] **A1 — ELI5 toggle UI in CoinModal** *(addresses Kevin Lin: novices hit unknown vocabulary)*
+  - Backend `/api/explanation` already accepts `eli5: boolean`; just needs UI
+  - Add a toggle switch in the AI interpretation card, persist preference to localStorage
+  - When toggled, refetch explanation with new prompt
+  - Expand cache key to include `eli5` flag (already designed in `buildExplanationCacheKey`)
+  - Telemetry: extend `ai_explanation_loaded` event to log the eli5 flag
+  - Acceptance: flipping the toggle on a coin produces visibly simpler language within 2s
+
+- [ ] **A2 — Click target cleanup** *(addresses Sankar: clickbox misfires on favorites)*
+  - Audit `BubbleChart.tsx` favorite toggle: ensure click is rejected if pointer moved >threshold between mousedown and mouseup
+  - Tighten hit area or add a small explicit favorite button if needed
+  - Acceptance: dragging across a bubble during physics drift never adds it to favorites
+
+- [ ] **A3 — Custom coin search + pin** *(addresses Sankar: users want coins beyond top 100)*
+  - Use CoinGecko `/api/v3/coins/list` (cached server-side) for autocomplete
+  - On select, fetch single-coin market data via `/api/v3/coins/{id}/market_chart` or single-coin endpoint
+  - Pinned coins persist in localStorage, render in the bubble chart alongside the top 100
+  - New backend route `/api/coin-search?q=…` to proxy CoinGecko search (avoids CORS + throttling)
+  - Acceptance: search "matic" → find Polygon → pin → it appears in the bubble view as a legitimate bubble
+
+### Phase B — real A/B test infrastructure (TA's biggest critique)
+
+- [ ] **B1 — Variant assignment**
+  - New `lib/variant.ts` module: deterministic A/B split from session ID (already in localStorage as `coincanvas-session-id`)
+  - 50/50 hash bucketing
+  - Read once at app boot, cache in module-scope; pass to all components needing it
+  - Telemetry event `variant_assigned` once per session
+
+- [ ] **B2 — Variant A treatment (control)**
+  - Bare LLM summary in the AI interpretation card: hide the AI-generated badge, hide the trust chip, hide the ELI5 toggle
+  - Keep watch-notes (otherwise treatments diverge in content depth, not framing)
+  - Same backend, same model, same data — only the framing UI is different
+
+- [ ] **B3 — Variant B treatment (treatment)**
+  - Full rich AI card: LLM summary + AI-generated badge + trust chip + ELI5 toggle + watch-notes
+  - This is the current production state plus the A1 toggle
+
+- [ ] **B4 — In-app micro-survey on coin close**
+  - When the modal closes after >5s of viewing, show a small, dismissible 2-question prompt:
+    1. "How clear was this explanation?" (😕 / 🙂 / 🎯 → 0/1/2)
+    2. "How much did you trust it?" (1–5 stars)
+  - Skippable, non-blocking
+  - Telemetry: `comprehension_rated` and `trust_rated` events with variant + symbol + value
+
+- [ ] **B5 — Variant override URL flag**
+  - `?variant=a` / `?variant=b` query param overrides the assignment for the session
+  - Lets us demo both variants live during the teaching-team meeting
+
+### Phase C — monetization implementation (class hard requirement)
+
+- [ ] **C1 — Pick + scaffold the gated feature: "Pro insights"**
+  - Free users see the current AI card
+  - Pro users would see a deeper card with: 7d/30d narrative, cross-coin pattern context, suggested follow-up reading
+  - For Sprint 5: build the locked-state UI only — the deeper card is Wizard-of-Oz (real implementation deferred post-Sprint 5)
+  - Locked-state UI shows a blurred preview + 🔒 "Unlock Pro insights — $2/mo" button
+
+- [ ] **C2 — Intent capture flow**
+  - Clicking the upsell opens a modal: "Pro is in beta — join the waitlist"
+  - Optional email field (skippable)
+  - Telemetry: `premium_intent_clicked` (variant, coin, source location), `premium_waitlist_submitted` (with email if provided)
+  - **Wizard-of-Oz disclosure**: modal explicitly says "Pro features aren't built yet — your interest helps us prioritize"
+
+- [ ] **C3 — Premium prompt on Settings page**
+  - One discoverable card on `/settings` describing the planned Pro tier
+  - Same waitlist CTA
+
+### Phase D — operations dashboard (2nd-platform candidate + insurance)
+
+- [ ] **D1 — `/admin` route with shared-secret gate**
+  - Query-param gate: `/admin?key=<value>` matched against `ADMIN_KEY` env var on Vercel
+  - 401 page on missing/bad key
+  - Not real auth — adequate for class demo; clearly labeled as such
+
+- [ ] **D2 — Live A/B distribution panel**
+  - Reads telemetry exports from Vercel KV (`KV_REST_API_*` already configured) or aggregates from a new `/api/telemetry-export` route
+  - Shows: variant A count, variant B count, comprehension averages per variant, trust averages per variant
+
+- [ ] **D3 — Fallback rate per coin**
+  - Aggregates `ai_explanation_loaded` events: % `is_fallback: true` per coin
+  - Sorted descending so we can see which coins lean on deterministic fallback
+
+- [ ] **D4 — Premium intent funnel**
+  - Counts: card-views → upsell-clicks → waitlist-submits
+  - Per-variant breakdown so we know if Variant B drives more conversion
+
+- [ ] **D5 — Recent telemetry stream**
+  - Last 50 events, expandable JSON
+  - Demo: shows live backend operation in real time
+
+### Phase E — PWA polish (LAST — runs after Phases A–D land)
+
+- [ ] **E1 — Complete `manifest.ts`**
+  - Icons (192px, 512px) — generated from existing favicon
+  - Theme + background color matched to app's dark charcoal
+  - `display: "standalone"`, `start_url: "/"`, `scope: "/"`
+  - Categories, description, name + short_name
+
+- [ ] **E2 — Service worker for offline shell**
+  - Cache the app shell (HTML, CSS, JS) on first visit
+  - Cache last-good `/api/market` response with 24h max-age fallback
+  - Cache `/api/explanation` responses keyed by their existing cache key
+  - Cold launch on phone with no network: app shell loads, last-known bubble layout renders, AI card shows cached explanation if present, otherwise graceful "offline" state
+
+- [ ] **E3 — iOS install meta tags**
+  - `apple-touch-icon` + `apple-mobile-web-app-capable` + `apple-mobile-web-app-status-bar-style`
+  - Custom splash screens for iPhone sizes
+
+- [ ] **E4 — Phone hotspot install verification**
+  - iOS Safari "Add to Home Screen" → launches as standalone
+  - Android Chrome "Install app" → launches as standalone
+  - Confirm offline cold-launch behavior on real device
+
+### After Phase E — non-code deliverables (notebook + video)
+
+Tracked in the **Sprint 5 notebook checklist** section below. Not started until Phase E ships.
 
 #### Sub-plan: P1.0 LLM explanation engine
 
@@ -115,10 +213,21 @@ Living document. Update checkboxes as items ship. Keep in sync with the notebook
 - Direct `fetch` to Gemini REST, no npm SDK (zero dep-tree risk)
 - Not porting Maya's `Tests/` directory in this phase (Sprint-3-era, mostly broken against Sprint 4 components). Revisit post-demo.
 
-### P2 — strengthen monetization + ops story
+### Historical reference: original P0/P1/P2 priority list (superseded 2026-04-25)
 
-- [ ] **P2.1 Freemium wall + intent capture** — gate one premium feature behind "$2/mo" button that logs the *click*; no Stripe needed. Click-through = proxy for willingness-to-pay data. Addresses Jacob's critique.
-- [ ] **P2.2 Operations dashboard (`/admin`)** — live A/B variant assignments, comprehension scores, fallback rate per coin, session counts. Bonus 2nd-platform option if graders push back on PWA.
+The earlier tier list has been folded into Phases A–E:
+- P0.1 PWA polish → **Phase E**
+- P0.2 A/B test redesign → **Phase B**
+- P0.3 Scale user testing → **post-dev** (Maya/team task, not in code phase)
+- P0.4 Notebook fixes → **post-dev** (notebook checklist below)
+- P1.0 LLM engine → ✅ already shipped (sub-plan kept below as historical record)
+- P1.1 Per-source trust tags → initial done in P1.0; expansion deferred (Phase A doesn't need it)
+- P1.2 AI-generated badge → ✅ shipped in P1.0
+- P1.3 ELI5 toggle → **Phase A1**
+- P1.4 Custom coin → **Phase A3**
+- P1.5 Click target cleanup → **Phase A2**
+- P2.1 Freemium wall → **Phase C** (promoted to P0 by class requirement)
+- P2.2 Ops dashboard → **Phase D** (promoted to first-class deliverable)
 
 ## Explicitly out of scope
 
@@ -126,15 +235,18 @@ Living document. Update checkboxes as items ship. Keep in sync with the notebook
 - Buying a new custom domain (NRD-sinkholed through the demo window — phone hotspot is the demo plan)
 - Rewriting A/B backend — still routed through existing `main` vs `llm` branches; Variant B is just richer UI on the LLM branch
 
-## Demo storyline (rehearsed end-to-end flow)
+## Demo storyline (rehearsed end-to-end flow, after all phases land)
 
-1. Open `coincanvas-app.vercel.app` on phone (hotspot active)
-2. Tap "Add to Home Screen" → installed PWA icon
-3. Launch standalone, browse bubbles, tap a mover
-4. Show layered explanation: trust-tagged sources, AI-generated badge, ELI5 toggle
-5. Pin a coin beyond top 100 via custom add
-6. Switch to laptop → open `/admin` dashboard → show live Sprint 5 cohort data
-7. Wrap: end-to-end real services, no emulators/localhost, meets every Sprint 5 rubric line
+1. Open `coincanvas-app.vercel.app` on phone (hotspot active) — or launch installed PWA from home screen (Phase E)
+2. Browse bubbles, tap a mover → see Variant B's rich AI card (Phase A1 + Phase B3)
+3. Toggle ELI5 → language simplifies (Phase A1)
+4. Tap "🔒 Unlock Pro insights" → waitlist modal, Wizard-of-Oz labeled (Phase C1, C2)
+5. Search and pin a small-cap coin not in top 100 (Phase A3)
+6. Close modal → 2-question micro-survey appears, capture comprehension + trust (Phase B4)
+7. Switch to laptop → open `/admin?key=…` → live data: A/B distribution, comprehension scores, premium intent funnel, fallback rates per coin (Phase D)
+8. Hand the demo team a `?variant=a` link to show the control treatment side-by-side (Phase B5)
+
+Hits every Sprint 5 rubric line: end-to-end, real services, real data, A/B test infrastructure, monetization in code, two front-end platforms (PWA + ops dashboard).
 
 ## Sprint 5 notebook checklist (per class requirements)
 
@@ -165,3 +277,4 @@ Living document. Update checkboxes as items ship. Keep in sync with the notebook
 | 2026-04-24 | P1.0-Phase 3: preview deploy verified (BTC/USDT/PEPE all classified correctly on primary model) | ✅ |
 | 2026-04-24 | P1.0-Phase 4: fast-forward merge to main, prod deploy live, coincanvas-app.vercel.app alias re-attached, smoke-tested | ✅ |
 | 2026-04-24 | P1.0-Phase 5: local branch cleaned up, Maya credit note drafted for notebook | ✅ |
+| 2026-04-25 | Plan re-sequenced: Phase A → E (UX wins → A/B infra → monetization → ops dashboard → PWA), notebook + video deferred to post-dev | ✅ |
