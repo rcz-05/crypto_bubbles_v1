@@ -59,6 +59,7 @@ export type TelemetryEvent =
         is_fallback: boolean;
         tier: string;
         time_ms: number;
+        eli5: boolean;
       };
     }
   | {
@@ -66,6 +67,12 @@ export type TelemetryEvent =
       recordedAt: string;
       sessionId: string;
       payload: { symbol: string; reason: string };
+    }
+  | {
+      type: "eli5_toggled";
+      recordedAt: string;
+      sessionId: string;
+      payload: { symbol: string; value: boolean };
     };
 
 const STORAGE_KEY = "coincanvas-telemetry";

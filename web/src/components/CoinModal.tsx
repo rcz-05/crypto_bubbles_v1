@@ -24,6 +24,26 @@ const TIER_TONE: Record<ExplanationTier, "calm" | "watch" | "alert"> = {
   "High volatility": "alert",
 };
 
+const ELI5_STORAGE_KEY = "coincanvas-eli5-pref";
+
+function readEli5Pref(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(ELI5_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeEli5Pref(value: boolean) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(ELI5_STORAGE_KEY, value ? "1" : "0");
+  } catch {
+    // ignore storage errors (private mode, etc.)
+  }
+}
+
 function formatCurrency(value: number | null | undefined) {
   if (value == null) return "n/a";
   return new Intl.NumberFormat("en-US", {
@@ -54,9 +74,11 @@ function formatRelativeDate(value: string) {
 }
 
 export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props) {
+  const [eli5, setEli5] = useState<boolean>(readEli5Pref);
+
   const cacheKey = coin ? `${coin.id}:${coin.symbol}` : null;
   const explanationKey = coin
-    ? `${coin.id}:${coin.symbol}:${Math.round((coin.price_change_percentage_24h ?? 0) * 2) / 2}`
+    ? `${coin.id}:${coin.symbol}:${Math.round((coin.price_change_percentage_24h ?? 0) * 2) / 2}:${eli5 ? "eli5" : "std"}`
     : null;
   const initialContext = cacheKey ? contextCache.get(cacheKey) ?? null : null;
   const initialExplanation = explanationKey
@@ -180,7 +202,7 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
           high_24h: coin.high_24h,
           low_24h: coin.low_24h,
         },
-        eli5: false,
+        eli5,
       }),
     })
       .then(async (res) => {
@@ -200,6 +222,7 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
             is_fallback: payload.isFallback,
             tier: payload.tier,
             time_ms: Math.round(performance.now() - startedAt),
+            eli5,
           },
         });
       })
@@ -215,7 +238,23 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
       });
 
     return () => controller.abort();
-  }, [coin, explanationKey]);
+  }, [coin, explanationKey, eli5]);
+
+  const handleToggleEli5 = useCallback(
+    (next: boolean) => {
+      if (next === eli5) return;
+      setEli5(next);
+      writeEli5Pref(next);
+      if (coin) {
+        trackEvent({
+          type: "eli5_toggled",
+          recordedAt: new Date().toISOString(),
+          payload: { symbol: coin.symbol, value: next },
+        });
+      }
+    },
+    [coin, eli5],
+  );
 
   const stableClose = useCallback(() => {
     onClose();
@@ -289,7 +328,9 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
           </div>
         </div>
 
-        <section className="context-card ai-interp-card">
+        <section
+          className={`context-card ai-interp-card${eli5 ? " eli5-active" : ""}`}
+        >
           <div className="context-section-header">
             <div>
               <p className="section-label">AI interpretation</p>
@@ -319,19 +360,53 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
             ) : null}
           </div>
 
-          {explanationStatus === "loading" ? (
+          <div
+            className="reading-level-toggle"
+            role="group"
+            aria-label="Reading level"
+          >
+            <span className="reading-level-label">Reading level</span>
+            <div className="reading-level-pill" data-active={eli5 ? "eli5" : "std"}>
+              <span className="reading-level-thumb" aria-hidden />
+              <button
+                type="button"
+                className={`reading-level-option${!eli5 ? " is-active" : ""}`}
+                onClick={() => handleToggleEli5(false)}
+                aria-pressed={!eli5}
+              >
+                <span aria-hidden>📊</span>
+                Standard
+              </button>
+              <button
+                type="button"
+                className={`reading-level-option${eli5 ? " is-active" : ""}`}
+                onClick={() => handleToggleEli5(true)}
+                aria-pressed={eli5}
+              >
+                <span aria-hidden>🌱</span>
+                Plain English
+              </button>
+            </div>
+          </div>
+
+          {explanationStatus === "loading" && !explanation ? (
             <div className="context-loading">
               <div className="loading-bar short" />
               <div className="loading-bar" />
               <div className="loading-bar medium" />
             </div>
-          ) : explanationStatus === "error" || !explanation ? (
+          ) : explanationStatus === "error" && !explanation ? (
             <p className="context-copy muted">
               AI interpretation unavailable right now. The verified market data
               below is still usable.
             </p>
-          ) : (
-            <>
+          ) : explanation ? (
+            <div
+              className={`ai-interp-body${
+                explanationStatus === "loading" ? " is-refreshing" : ""
+              }`}
+              aria-busy={explanationStatus === "loading"}
+            >
               <p className="context-copy">{explanation.summary}</p>
 
               {explanation.watchNotes.length > 0 ? (
@@ -371,8 +446,8 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
                   Open source →
                 </a>
               </div>
-            </>
-          )}
+            </div>
+          ) : null}
         </section>
 
         <div className="context-grid">
