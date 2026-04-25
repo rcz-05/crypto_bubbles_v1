@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getAdminFlags, peekAdminFlags } from "@/lib/admin-flags";
 import { trackEvent } from "@/lib/telemetry";
 
 export type ProStatus = {
@@ -44,6 +45,16 @@ function emitChange() {
 function readStatus(): ProStatus {
   if (!canUseStorage()) {
     return { isPro: false, state: "inactive", since: null, trialEndsAt: null };
+  }
+
+  // Admin Pro override grants Pro to every visiting session until cleared.
+  if (peekAdminFlags().proOverride) {
+    return {
+      isPro: true,
+      state: "active",
+      since: null,
+      trialEndsAt: null,
+    };
   }
 
   const flag = window.localStorage.getItem(PRO_KEY);
@@ -140,7 +151,11 @@ export function useProStatus(): ProStatus {
   const [status, setStatus] = useState<ProStatus>(() => readStatus());
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setStatus(getProStatus()), 0);
+    const timer = window.setTimeout(async () => {
+      // Sync admin flags so proOverride is picked up on first load.
+      await getAdminFlags();
+      setStatus(getProStatus());
+    }, 0);
 
     const refresh = () => setStatus(readStatus());
     window.addEventListener(STATUS_CHANGE_EVENT, refresh);

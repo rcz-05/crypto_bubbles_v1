@@ -117,6 +117,7 @@ export function ProInsightsCard({ coin }: Props) {
             model: next.narrative.model,
             is_fallback: next.narrative.isFallback,
             time_ms: Math.round(performance.now() - startedAt),
+            verdict: next.signal.verdict,
           },
         });
       })

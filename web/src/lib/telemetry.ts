@@ -190,6 +190,7 @@ export type TelemetryEvent =
         model: string;
         is_fallback: boolean;
         time_ms: number;
+        verdict?: "BUY" | "HODL" | "SELL";
       };
     }
   | {
@@ -233,11 +234,75 @@ export function loadTelemetry(): TelemetryEvent[] {
   }
 }
 
+// Outbound queue for forwarding events to /api/telemetry-ingest. Events are
+// batched and flushed periodically (or on visibility change) so we don't fire
+// a request per click, but we still get near-real-time updates on the ops
+// dashboard.
+const FORWARD_QUEUE: TelemetryEvent[] = [];
+const FLUSH_INTERVAL_MS = 1500;
+const FLUSH_BATCH_LIMIT = 25;
+let flushTimer: number | null = null;
+
+function flushForwardQueue() {
+  if (flushTimer != null) {
+    window.clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+  if (FORWARD_QUEUE.length === 0) return;
+  const batch = FORWARD_QUEUE.splice(0, FLUSH_BATCH_LIMIT);
+  const body = JSON.stringify(batch);
+  // Prefer sendBeacon during pagehide so we don't lose the tail; fall back to fetch.
+  if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+    try {
+      const blob = new Blob([body], { type: "application/json" });
+      navigator.sendBeacon("/api/telemetry-ingest", blob);
+      return;
+    } catch {
+      // fall through to fetch
+    }
+  }
+  void fetch("/api/telemetry-ingest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+    keepalive: true,
+  }).catch(() => {
+    // Ingest is best-effort; never surface ingest failures to the UI.
+  });
+}
+
+function scheduleFlush() {
+  if (flushTimer != null) return;
+  if (typeof window === "undefined") return;
+  flushTimer = window.setTimeout(flushForwardQueue, FLUSH_INTERVAL_MS);
+}
+
+function ensureFlushHooks() {
+  if (typeof window === "undefined") return;
+  if ((ensureFlushHooks as { wired?: boolean }).wired) return;
+  (ensureFlushHooks as { wired?: boolean }).wired = true;
+  window.addEventListener("pagehide", flushForwardQueue);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushForwardQueue();
+  });
+}
+
+function forwardEvent(event: TelemetryEvent) {
+  ensureFlushHooks();
+  FORWARD_QUEUE.push(event);
+  if (FORWARD_QUEUE.length >= FLUSH_BATCH_LIMIT) {
+    flushForwardQueue();
+  } else {
+    scheduleFlush();
+  }
+}
+
 export function trackEvent(event: Omit<TelemetryEvent, "sessionId">) {
   if (!canUseStorage()) return;
   const enriched = { ...event, sessionId: getSessionId() } as TelemetryEvent;
   const next = [...loadTelemetry(), enriched];
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  forwardEvent(enriched);
 }
 
 export function clearTelemetry() {

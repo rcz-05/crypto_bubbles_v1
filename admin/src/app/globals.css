@@ -1,0 +1,263 @@
+:root {
+  --bg: #0b1220;
+  --surface: #111a2c;
+  --surface-2: #16223a;
+  --border: rgba(148, 163, 184, 0.18);
+  --border-strong: rgba(148, 163, 184, 0.28);
+  --text: #e2e8f0;
+  --text-secondary: rgba(226, 232, 240, 0.72);
+  --muted: rgba(148, 163, 184, 0.78);
+  --buy: #22c55e;
+  --buy-dim: rgba(34, 197, 94, 0.18);
+  --hodl: #facc15;
+  --hodl-dim: rgba(250, 204, 21, 0.18);
+  --sell: #ef4444;
+  --sell-dim: rgba(239, 68, 68, 0.18);
+  --variant-a: #38bdf8;
+  --variant-a-dim: rgba(56, 189, 248, 0.16);
+  --variant-b: #fb923c;
+  --variant-b-dim: rgba(251, 146, 60, 0.16);
+  --accent: #818cf8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "Inter",
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+.mono {
+  font-family:
+    "SF Mono",
+    "JetBrains Mono",
+    "Menlo",
+    "Monaco",
+    "Roboto Mono",
+    monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 16px 22px 60px;
+  max-width: 1480px;
+  margin: 0 auto;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 6px 4px 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.brand-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 14px rgba(129, 140, 248, 0.5);
+}
+
+.topbar-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.7);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.panel.span-12 {
+  grid-column: span 12;
+}
+.panel.span-8 {
+  grid-column: span 8;
+}
+.panel.span-7 {
+  grid-column: span 7;
+}
+.panel.span-6 {
+  grid-column: span 6;
+}
+.panel.span-5 {
+  grid-column: span 5;
+}
+.panel.span-4 {
+  grid-column: span 4;
+}
+
+@media (max-width: 1100px) {
+  .panel.span-8,
+  .panel.span-7,
+  .panel.span-6,
+  .panel.span-5,
+  .panel.span-4 {
+    grid-column: span 12;
+  }
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.panel-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  color: var(--muted);
+  margin: 0;
+}
+
+.panel-meta {
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.metric-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.metric {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.metric-label {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.metric-value {
+  font-size: 1.7rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.metric-value.small {
+  font-size: 1.15rem;
+}
+
+.metric-sub {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.unauth {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.unauth-card {
+  width: min(440px, 100%);
+  padding: 28px 24px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.unauth-card h1 {
+  font-size: 1.3rem;
+  margin: 6px 0 8px;
+  letter-spacing: -0.01em;
+}
+
+.unauth-card code {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  font-size: 0.84rem;
+  font-family:
+    "SF Mono", "JetBrains Mono", monospace;
+}

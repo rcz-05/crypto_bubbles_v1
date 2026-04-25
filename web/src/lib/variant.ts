@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getAdminFlags, peekAdminFlags } from "@/lib/admin-flags";
 import { getSessionId, trackEvent } from "@/lib/telemetry";
 
 export type Variant = "a" | "b";
@@ -40,6 +41,8 @@ function peekVariant(): Variant {
   if (!canUseSessionStorage()) return "a";
   const override = readOverrideFromUrl();
   if (override) return override;
+  const adminFlag = peekAdminFlags().forceVariant;
+  if (adminFlag) return adminFlag;
   const stored = window.sessionStorage.getItem(VARIANT_KEY);
   return isVariant(stored) ? stored : "a";
 }
@@ -51,6 +54,14 @@ function persistVariant(variant: Variant) {
 
 export function getVariant(): Variant {
   if (!canUseSessionStorage()) return cachedVariant ?? "a";
+
+  const adminFlag = peekAdminFlags().forceVariant;
+  if (adminFlag && cachedVariant !== adminFlag) {
+    cachedVariant = adminFlag;
+    persistVariant(adminFlag);
+    window.sessionStorage.setItem(ASSIGNED_KEY, "1");
+    return adminFlag;
+  }
 
   const override = readOverrideFromUrl();
   if (override) {
@@ -106,7 +117,11 @@ export function useVariant(): Variant {
   const [variant, setVariant] = useState<Variant>(() => peekVariant());
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setVariant(getVariant()), 0);
+    const timer = window.setTimeout(async () => {
+      // Fetch admin flags first so forceVariant lands before the assignment fires.
+      await getAdminFlags();
+      setVariant(getVariant());
+    }, 0);
     return () => window.clearTimeout(timer);
   }, []);
 
