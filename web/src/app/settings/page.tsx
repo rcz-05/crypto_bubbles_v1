@@ -2,8 +2,15 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
-import { ProWaitlistModal } from "@/components/ProWaitlistModal";
+import { ProCheckoutSheet } from "@/components/ProCheckoutSheet";
 import { loadLocalFavorites } from "@/lib/favorites";
+import {
+  PRO_PRICE_USD,
+  PRO_TRIAL_DAYS,
+  cancelPro,
+  trialDaysRemaining,
+  useProStatus,
+} from "@/lib/pro-status";
 import {
   clearTelemetry,
   exportTelemetryPayload,
@@ -14,12 +21,21 @@ import {
 import { useVariant } from "@/lib/variant";
 import { resetOnboarding } from "@/components/OnboardingOverlay";
 
+function formatProSinceDate(value: string | null): string {
+  if (!value) return "today";
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return "today";
+  return dt.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
 export default function SettingsPage() {
   const [events, setEvents] = useState<TelemetryEvent[]>(() => loadTelemetry());
   const [favoriteCount] = useState(() => loadLocalFavorites().length);
   const [downloadState, setDownloadState] = useState<"idle" | "done">("idle");
-  const [proWaitlistOpen, setProWaitlistOpen] = useState(false);
+  const [proCheckoutOpen, setProCheckoutOpen] = useState(false);
   const variant = useVariant();
+  const proStatus = useProStatus();
+  const trialDaysLeft = trialDaysRemaining(proStatus.trialEndsAt);
 
   const summary = useMemo(() => {
     const contextLoads = events.filter(
@@ -74,8 +90,20 @@ export default function SettingsPage() {
         source: "settings",
       },
     });
-    setProWaitlistOpen(true);
+    trackEvent({
+      type: "pro_checkout_opened",
+      recordedAt: new Date().toISOString(),
+      payload: {
+        variant,
+        source: "settings",
+      },
+    });
+    setProCheckoutOpen(true);
   }, [variant]);
+
+  const handleProCancel = useCallback(() => {
+    cancelPro("user");
+  }, []);
 
   return (
     <div className="app-shell">
@@ -176,19 +204,41 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="list-card pro-settings-card">
-            <div>
-              <div style={{ fontWeight: 700 }}>CoinCanvas Pro</div>
-              <div style={{ color: "var(--muted)" }}>
-                Planned $2/mo tier for deeper 7d/30d narratives, cross-coin
-                pattern context, and suggested follow-up reading. Pro features
-                are not built yet; this card measures demand.
+          {proStatus.isPro ? (
+            <div className="list-card pro-settings-card">
+              <div>
+                <div style={{ fontWeight: 700 }}>
+                  CoinCanvas Pro · {proStatus.state === "trial" ? "trial active" : "subscribed"}
+                </div>
+                <div style={{ color: "var(--muted)" }}>
+                  {proStatus.state === "trial"
+                    ? `Free trial — ${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} left, then $${PRO_PRICE_USD}/mo. Includes multi-horizon read, peer benchmark, volatility profile, and curated trust-tagged sources.`
+                    : `Active since ${formatProSinceDate(proStatus.since)} at $${PRO_PRICE_USD}/mo. Includes multi-horizon read, peer benchmark, volatility profile, and curated trust-tagged sources.`}
+                </div>
               </div>
+              <button
+                className="refresh-btn secondary"
+                type="button"
+                onClick={handleProCancel}
+              >
+                Cancel subscription
+              </button>
             </div>
-            <button className="refresh-btn" type="button" onClick={handleProIntent}>
-              Join Pro waitlist
-            </button>
-          </div>
+          ) : (
+            <div className="list-card pro-settings-card">
+              <div>
+                <div style={{ fontWeight: 700 }}>CoinCanvas Pro</div>
+                <div style={{ color: "var(--muted)" }}>
+                  ${PRO_PRICE_USD}/mo after a {PRO_TRIAL_DAYS}-day free trial.
+                  Multi-horizon analyst read, peer-cohort benchmark, volatility
+                  profile, and curated trust-tagged sources for serious novices.
+                </div>
+              </div>
+              <button className="refresh-btn" type="button" onClick={handleProIntent}>
+                Start {PRO_TRIAL_DAYS}-day free trial
+              </button>
+            </div>
+          )}
 
           <div className="list-card">
             <div>
@@ -250,11 +300,11 @@ export default function SettingsPage() {
         </div>
       </main>
 
-      <ProWaitlistModal
-        open={proWaitlistOpen}
+      <ProCheckoutSheet
+        open={proCheckoutOpen}
         variant={variant}
         source="settings"
-        onClose={() => setProWaitlistOpen(false)}
+        onClose={() => setProCheckoutOpen(false)}
       />
     </div>
   );

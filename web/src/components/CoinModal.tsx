@@ -2,10 +2,12 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ProWaitlistModal } from "@/components/ProWaitlistModal";
+import { ProCheckoutSheet } from "@/components/ProCheckoutSheet";
+import { ProInsightsCard } from "@/components/ProInsightsCard";
 import { CoinContext } from "@/lib/coin-context";
 import { Coin } from "@/lib/coingecko";
 import type { CoinExplanation, ExplanationTier } from "@/lib/explanation";
+import { PRO_PRICE_USD, PRO_TRIAL_DAYS, useProStatus } from "@/lib/pro-status";
 import { trackEvent } from "@/lib/telemetry";
 import { useVariant } from "@/lib/variant";
 
@@ -58,7 +60,8 @@ function formatRelativeDate(value: string) {
 export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props) {
   const variant = useVariant();
   const eli5 = variant === "b";
-  const [proWaitlistOpen, setProWaitlistOpen] = useState(false);
+  const proStatus = useProStatus();
+  const [proCheckoutOpen, setProCheckoutOpen] = useState(false);
 
   const cacheKey = coin ? `${coin.id}:${coin.symbol}` : null;
   const explanationKey = coin
@@ -240,7 +243,16 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
         source: "coin_modal",
       },
     });
-    setProWaitlistOpen(true);
+    trackEvent({
+      type: "pro_checkout_opened",
+      recordedAt: new Date().toISOString(),
+      payload: {
+        variant,
+        symbol: coin.symbol,
+        source: "coin_modal",
+      },
+    });
+    setProCheckoutOpen(true);
   }, [coin, variant]);
 
   useEffect(() => {
@@ -404,43 +416,62 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
           ) : null}
         </section>
 
-        <section className="context-card pro-lock-card" aria-labelledby="pro-lock-title">
-          <div className="pro-lock-copy">
-            <p className="section-label">Pro insights</p>
-            <h3 id="pro-lock-title">Deeper context for repeat users</h3>
-            <p>
-              Free users keep the current AI read. Pro would add broader
-              pattern context for people who return often.
-            </p>
-          </div>
+        {proStatus.isPro ? (
+          <ProInsightsCard coin={coin} />
+        ) : (
+          <section
+            className="context-card pro-lock-card"
+            aria-labelledby="pro-lock-title"
+          >
+            <div className="pro-lock-copy">
+              <p className="section-label">Pro insights</p>
+              <h3 id="pro-lock-title">
+                Multi-horizon read + peer benchmark
+              </h3>
+              <p>
+                Pro adds an analyst-style 1h/24h/7d/30d synthesis, a peer-cohort
+                comparison against similar market-cap coins, and a volatility
+                profile. Built for users who want signal density, not
+                hand-holding.
+              </p>
+            </div>
 
-          <div className="pro-preview-wrap" aria-hidden>
-            <div className="pro-preview-blur">
-              <div className="pro-preview-row">
-                <span>7d / 30d narrative</span>
-                <strong>Momentum cooling after a larger monthly move</strong>
+            <div className="pro-preview-wrap" aria-hidden>
+              <div className="pro-preview-blur">
+                <div className="pro-preview-row">
+                  <span>Multi-horizon narrative</span>
+                  <strong>
+                    24h move sits inside a constructive 7d trend; 30d still
+                    consolidating
+                  </strong>
+                </div>
+                <div className="pro-preview-row">
+                  <span>Peer benchmark</span>
+                  <strong>
+                    Outperforming top-10 large-cap cohort by +0.42 pts on the
+                    session
+                  </strong>
+                </div>
+                <div className="pro-preview-row">
+                  <span>Volatility profile</span>
+                  <strong>Above-average chop vs cohort (4.2% vs 2.8%)</strong>
+                </div>
               </div>
-              <div className="pro-preview-row">
-                <span>Cross-coin pattern</span>
-                <strong>Move compared with similar market-cap peers</strong>
-              </div>
-              <div className="pro-preview-row">
-                <span>Follow-up reading</span>
-                <strong>Suggested sources for a deeper beginner review</strong>
+              <div className="pro-preview-overlay">
+                <span className="pro-price-pill">
+                  ${PRO_PRICE_USD}/mo · {PRO_TRIAL_DAYS}-day free trial
+                </span>
+                <button
+                  className="refresh-btn"
+                  type="button"
+                  onClick={handleProIntent}
+                >
+                  Start {PRO_TRIAL_DAYS}-day free trial
+                </button>
               </div>
             </div>
-            <div className="pro-preview-overlay">
-              <span className="pro-price-pill">$2/mo beta signal</span>
-              <button
-                className="refresh-btn"
-                type="button"
-                onClick={handleProIntent}
-              >
-                Unlock Pro insights - $2/mo
-              </button>
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         <div className="context-grid">
           <section className="context-card accent">
@@ -620,12 +651,12 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
         </section>
       </div>
 
-      <ProWaitlistModal
-        open={proWaitlistOpen}
+      <ProCheckoutSheet
+        open={proCheckoutOpen}
         variant={variant}
         source="coin_modal"
         symbol={coin.symbol}
-        onClose={() => setProWaitlistOpen(false)}
+        onClose={() => setProCheckoutOpen(false)}
       />
     </div>
   );
