@@ -39,13 +39,15 @@ Living document. Update checkboxes as items ship. Keep in sync with the notebook
 
 ### Phase A — quick peer-feedback wins (foundation for richer A/B test)
 
-- [ ] **A1 — ELI5 toggle UI in CoinModal** *(addresses Kevin Lin: novices hit unknown vocabulary)*
-  - Backend `/api/explanation` already accepts `eli5: boolean`; just needs UI
-  - Add a toggle switch in the AI interpretation card, persist preference to localStorage
-  - When toggled, refetch explanation with new prompt
-  - Expand cache key to include `eli5` flag (already designed in `buildExplanationCacheKey`)
-  - Telemetry: extend `ai_explanation_loaded` event to log the eli5 flag
-  - Acceptance: flipping the toggle on a coin produces visibly simpler language within 2s
+- [x] **A1 — ELI5 toggle UI in CoinModal** ✅ shipped to prod 2026-04-25
+  - Segmented two-option pill ("Standard" | "Plain English") with sliding indigo thumb (cubic-bezier 280ms)
+  - Card shifts to a warm amber tint when ELI5 is on — embodied "softer reading lamp" mode
+  - During refetch on toggle, old content stays visible at 55% opacity with a "Re-reading…" pill, no skeleton tear-down
+  - Preference persists via `coincanvas-eli5-pref` localStorage key (lazy useState initializer, no hydration mismatch)
+  - Component cache key extended with eli5 flag → std + eli5 cache independently per coin
+  - Telemetry: new `eli5_toggled` event; `ai_explanation_loaded` payload now includes the eli5 flag for Phase B variant analysis
+  - prefers-reduced-motion respected; mobile breakpoint reflows the toggle row
+  - Verified on prod: ELI5=true on ETH → "Ethereum's price went down by a small amount today. This is after it had gone up over the last week and month." vs standard analyst framing
 
 - [ ] **A2 — Click target cleanup** *(addresses Sankar: clickbox misfires on favorites)*
   - Audit `BubbleChart.tsx` favorite toggle: ensure click is rejected if pointer moved >threshold between mousedown and mouseup
@@ -278,3 +280,4 @@ Hits every Sprint 5 rubric line: end-to-end, real services, real data, A/B test 
 | 2026-04-24 | P1.0-Phase 4: fast-forward merge to main, prod deploy live, coincanvas-app.vercel.app alias re-attached, smoke-tested | ✅ |
 | 2026-04-24 | P1.0-Phase 5: local branch cleaned up, Maya credit note drafted for notebook | ✅ |
 | 2026-04-25 | Plan re-sequenced: Phase A → E (UX wins → A/B infra → monetization → ops dashboard → PWA), notebook + video deferred to post-dev | ✅ |
+| 2026-04-25 | Phase A1: ELI5 toggle shipped to prod (segmented pill + warm tint + refresh state, localStorage persistence, telemetry) | ✅ |
