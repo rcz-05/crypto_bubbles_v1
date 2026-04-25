@@ -38,7 +38,7 @@ type PhysicsBody = {
 /* ------------------------------------------------------------------ */
 const COLLISION_STRENGTH = 0.5;
 const WALL_PADDING = 4;
-const BUBBLE_GAP = 4;
+const BUBBLE_GAP = 6;
 const CURSOR_RADIUS = 20;
 const CURSOR_FORCE = 0.15;
 const DRIFT_SPEED = 0.18;       // how fast bubbles float (px/frame)
@@ -64,8 +64,8 @@ function hashSeed(s: string): number {
  * at different speeds make the outline breathe and flow.
  */
 function blobPath(r: number, seed: number, time: number): string {
-  const n = 10;
-  const wobble = r * 0.12;
+  const n = 12;
+  const wobble = r * 0.055;
   const pts: [number, number][] = [];
 
   for (let i = 0; i < n; i++) {
@@ -172,8 +172,14 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     sorted.forEach((item, i) => rankMap.set(item.coin.id, i));
 
     const n = items.length;
-    const minR = 22;
-    const maxR = Math.min(width, height) * 0.075;
+    // When we render 25 bubbles on mobile (post-pagination), there's ~4× more
+    // canvas per bubble, so we scale up. On the full board (100), we still
+    // grow modestly so the size hierarchy reads more clearly.
+    const sparse = n <= 30;
+    const medium = n <= 60;
+    const minR = sparse ? 42 : medium ? 32 : 26;
+    const minDim = Math.min(width, height);
+    const maxR = sparse ? minDim * 0.16 : medium ? minDim * 0.115 : minDim * 0.09;
 
     // Random placement using deterministic hash — no grid pattern
     return items.map((v) => {
