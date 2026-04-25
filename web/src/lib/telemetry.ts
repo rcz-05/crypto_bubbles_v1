@@ -2,6 +2,18 @@
 
 export type TelemetryEvent =
   | {
+      type: "variant_assigned";
+      recordedAt: string;
+      sessionId: string;
+      payload: { variant: "a" | "b"; source: "hash" | "stored" };
+    }
+  | {
+      type: "variant_overridden";
+      recordedAt: string;
+      sessionId: string;
+      payload: { variant: "a" | "b"; previousVariant: "a" | "b" | null };
+    }
+  | {
       type: "modal_opened";
       recordedAt: string;
       sessionId: string;
@@ -60,6 +72,7 @@ export type TelemetryEvent =
         tier: string;
         time_ms: number;
         eli5: boolean;
+        variant?: "a" | "b";
       };
     }
   | {
@@ -79,6 +92,34 @@ export type TelemetryEvent =
       recordedAt: string;
       sessionId: string;
       payload: { symbol: string; source: "favorites_page" | "bubble_board" };
+    }
+  | {
+      type: "survey_shown";
+      recordedAt: string;
+      sessionId: string;
+      payload: { variant: "a" | "b"; symbol: string };
+    }
+  | {
+      type: "survey_dismissed";
+      recordedAt: string;
+      sessionId: string;
+      payload: {
+        variant: "a" | "b";
+        symbol: string;
+        reason: "skip" | "timeout";
+      };
+    }
+  | {
+      type: "comprehension_rated";
+      recordedAt: string;
+      sessionId: string;
+      payload: { variant: "a" | "b"; symbol: string; value: 0 | 1 | 2 };
+    }
+  | {
+      type: "trust_rated";
+      recordedAt: string;
+      sessionId: string;
+      payload: { variant: "a" | "b"; symbol: string; value: 1 | 2 | 3 | 4 | 5 };
     };
 
 const STORAGE_KEY = "coincanvas-telemetry";

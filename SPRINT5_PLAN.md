@@ -94,27 +94,27 @@ Living document. Update checkboxes as items ship. Keep in sync with the notebook
 
 The ONLY thing that varies between A and B is the language style of the LLM-generated text + the visual cue (warm tint) that signals which mode is active. Same data, same model, same UI elements, same flow. This is the cleanest single-variable test we can run.
 
-- [ ] **B1 — Variant assignment**
+- [x] **B1 — Variant assignment** ✅ shipped 2026-04-25
   - New `web/src/lib/variant.ts` module
   - Deterministic 50/50 hash bucketing from the existing `coincanvas-session-id` (sessionStorage)
   - Module-scope cache so all components see the same variant within a session
   - Variant resolved exactly once per session, persisted to sessionStorage as `coincanvas-variant`
   - Telemetry: fires `variant_assigned` once per session with the chosen variant
 
-- [ ] **B2 — Variant override URL flag** (do alongside B1, same module)
+- [x] **B2 — Variant override URL flag** ✅ shipped 2026-04-25
   - `?variant=a` / `?variant=b` query param overrides the assignment for the current session
   - Persisted to sessionStorage so the override survives navigation
   - Telemetry: fires `variant_overridden` so analysis can filter overrides out of real test data
   - Used during the teaching-team demo to show both variants back-to-back
 
-- [ ] **B3 — Variant-aware CoinModal**
+- [x] **B3 — Variant-aware CoinModal** ✅ shipped 2026-04-25
   - Read variant via `useVariant()` hook
   - Hide the ELI5 toggle entirely (toggle is now a variant choice, not a user choice)
   - Force the `eli5` flag in the `/api/explanation` POST body to `variant === "b"` (regardless of user's old localStorage pref — which we silently ignore for the duration of the test)
   - Apply `.eli5-active` warm tint when variant === "b"
   - Telemetry: extend `ai_explanation_loaded` payload with `variant: "a" | "b"` field
 
-- [ ] **B4 — Post-modal micro-survey**
+- [x] **B4 — Post-modal micro-survey** ✅ shipped 2026-04-25
   - New component `web/src/components/PostModalSurvey.tsx`
   - Triggered when the CoinModal closes after >5s of being open
   - Rate-limited: at most one survey per 5-min window per session
@@ -130,7 +130,7 @@ The ONLY thing that varies between A and B is the language style of the LLM-gene
     - `survey_dismissed` { variant, symbol, reason: "skip" | "timeout" }
   - Mounts at the page root level (so it's available from both `/` and `/favorites`)
 
-- [ ] **B5 — Surface variant in the existing telemetry export**
+- [x] **B5 — Surface variant in the existing telemetry export** ✅ verified 2026-04-25
   - Settings page already has a "Download telemetry" button
   - Confirm export now includes `variant` field on relevant events so Maya can split A/B in the analysis spreadsheet
   - No new code; just verification
@@ -308,9 +308,9 @@ The earlier tier list has been folded into Phases A–E:
 
 1. Open `coincanvas-app.vercel.app` on phone (hotspot active) — or launch installed PWA from home screen (Phase E)
 2. Browse bubbles, tap a mover → see Variant B's rich AI card (Phase A1 + Phase B3)
-3. Toggle ELI5 → language simplifies (Phase A1)
+3. Use `?variant=a` and `?variant=b` demo links to show standard vs plain-English language framing side-by-side (Phase B)
 4. Tap "🔒 Unlock Pro insights" → waitlist modal, Wizard-of-Oz labeled (Phase C1, C2)
-5. Search and pin a small-cap coin not in top 100 (Phase A3)
+5. Open Favorites dashboard to show the saved-coin path uses the same modal and survey flow (Phase A2 + Phase B4)
 6. Close modal → 2-question micro-survey appears, capture comprehension + trust (Phase B4)
 7. Switch to laptop → open `/admin?key=…` → live data: A/B distribution, comprehension scores, premium intent funnel, fallback rates per coin (Phase D)
 8. Hand the demo team a `?variant=a` link to show the control treatment side-by-side (Phase B5)
@@ -352,3 +352,4 @@ Hits every Sprint 5 rubric line: end-to-end, real services, real data, A/B test 
 | 2026-04-25 | A3 deferred — peer-feedback nicety, no grade lever; revisit only if B–E ship clean with time to spare | ⏸ |
 | 2026-04-25 | Phase B sub-plan locked: single-variable A/B (standard vs plain-English language), 4 B-items + telemetry verification | ✅ |
 | 2026-04-25 | Pre-Phase-B: sharpened both system prompts so the variants are sharply differentiated (Standard now uses pro-trader vocabulary: drawdown / turnover ratio / distribution / capitulation; ELI5 explicitly bans 17+ jargon terms and forces dollar-translation of percentages). Verified on prod with ETH and SOL — A/B contrast is now production-grade. | ✅ |
+| 2026-04-25 | Phase B shipped: deterministic session variant assignment, `?variant=a/b` override, CoinModal locked to assigned language style, ELI5 toggle hidden during test, post-close comprehension/trust survey mounted on canvas + favorites, variant included in telemetry export | ✅ |

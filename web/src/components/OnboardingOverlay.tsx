@@ -35,7 +35,10 @@ export function OnboardingOverlay() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const seen = window.localStorage.getItem(STORAGE_KEY);
-    if (!seen) setVisible(true);
+    if (!seen) {
+      const timer = window.setTimeout(() => setVisible(true), 0);
+      return () => window.clearTimeout(timer);
+    }
   }, []);
 
   const dismiss = useCallback(() => {

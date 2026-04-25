@@ -6,6 +6,7 @@ import { CoinContext } from "@/lib/coin-context";
 import { Coin } from "@/lib/coingecko";
 import type { CoinExplanation, ExplanationTier } from "@/lib/explanation";
 import { trackEvent } from "@/lib/telemetry";
+import { useVariant } from "@/lib/variant";
 
 type Props = {
   coin: Coin | null;
@@ -23,26 +24,6 @@ const TIER_TONE: Record<ExplanationTier, "calm" | "watch" | "alert"> = {
   "Active mover": "watch",
   "High volatility": "alert",
 };
-
-const ELI5_STORAGE_KEY = "coincanvas-eli5-pref";
-
-function readEli5Pref(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(ELI5_STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeEli5Pref(value: boolean) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(ELI5_STORAGE_KEY, value ? "1" : "0");
-  } catch {
-    // ignore storage errors (private mode, etc.)
-  }
-}
 
 function formatCurrency(value: number | null | undefined) {
   if (value == null) return "n/a";
@@ -74,7 +55,8 @@ function formatRelativeDate(value: string) {
 }
 
 export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props) {
-  const [eli5, setEli5] = useState<boolean>(readEli5Pref);
+  const variant = useVariant();
+  const eli5 = variant === "b";
 
   const cacheKey = coin ? `${coin.id}:${coin.symbol}` : null;
   const explanationKey = coin
@@ -223,6 +205,7 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
             tier: payload.tier,
             time_ms: Math.round(performance.now() - startedAt),
             eli5,
+            variant,
           },
         });
       })
@@ -238,23 +221,7 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
       });
 
     return () => controller.abort();
-  }, [coin, explanationKey, eli5]);
-
-  const handleToggleEli5 = useCallback(
-    (next: boolean) => {
-      if (next === eli5) return;
-      setEli5(next);
-      writeEli5Pref(next);
-      if (coin) {
-        trackEvent({
-          type: "eli5_toggled",
-          recordedAt: new Date().toISOString(),
-          payload: { symbol: coin.symbol, value: next },
-        });
-      }
-    },
-    [coin, eli5],
-  );
+  }, [coin, explanationKey, eli5, variant]);
 
   const stableClose = useCallback(() => {
     onClose();
@@ -358,35 +325,6 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
                 {explanation.tier}
               </span>
             ) : null}
-          </div>
-
-          <div
-            className="reading-level-toggle"
-            role="group"
-            aria-label="Reading level"
-          >
-            <span className="reading-level-label">Reading level</span>
-            <div className="reading-level-pill" data-active={eli5 ? "eli5" : "std"}>
-              <span className="reading-level-thumb" aria-hidden />
-              <button
-                type="button"
-                className={`reading-level-option${!eli5 ? " is-active" : ""}`}
-                onClick={() => handleToggleEli5(false)}
-                aria-pressed={!eli5}
-              >
-                <span aria-hidden>📊</span>
-                Standard
-              </button>
-              <button
-                type="button"
-                className={`reading-level-option${eli5 ? " is-active" : ""}`}
-                onClick={() => handleToggleEli5(true)}
-                aria-pressed={eli5}
-              >
-                <span aria-hidden>🌱</span>
-                Plain English
-              </button>
-            </div>
           </div>
 
           {explanationStatus === "loading" && !explanation ? (

@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { CoinModal } from "@/components/CoinModal";
+import { PostModalSurvey, type SurveyRequest } from "@/components/PostModalSurvey";
 import type { Coin } from "@/lib/coingecko";
 import { useFavoritesStore } from "@/store/favorites";
 import { useMarketStore } from "@/store/market";
 import { trackEvent } from "@/lib/telemetry";
+import { useVariant } from "@/lib/variant";
 
 type SortKey = "added" | "gainer" | "loser" | "alpha";
 
@@ -54,6 +56,9 @@ export default function FavoritesPage() {
   const { coins, fetchCoins } = useMarketStore();
   const [sort, setSort] = useState<SortKey>("added");
   const [selected, setSelected] = useState<Coin | null>(null);
+  const [modalOpenedAt, setModalOpenedAt] = useState<number | null>(null);
+  const [surveyRequest, setSurveyRequest] = useState<SurveyRequest | null>(null);
+  const variant = useVariant();
 
   useEffect(() => {
     load();
@@ -122,14 +127,27 @@ export default function FavoritesPage() {
     return { upCount, downCount, flatCount, topMover, avgChange };
   }, [enriched]);
 
-  const handleOpen = (item: EnrichedFavorite) => {
+  const handleOpen = useCallback((item: EnrichedFavorite) => {
     if (!item.coin) return;
     setSelected(item.coin);
+    setModalOpenedAt(Date.now());
     trackEvent({
       type: "favorite_opened",
       recordedAt: new Date().toISOString(),
       payload: { symbol: item.symbol, source: "favorites_page" },
     });
+  }, []);
+
+  const handleCloseModal = () => {
+    if (selected && modalOpenedAt && Date.now() - modalOpenedAt >= 5_000) {
+      setSurveyRequest({
+        id: `${selected.id}-${Date.now()}`,
+        symbol: selected.symbol,
+        variant,
+      });
+    }
+    setSelected(null);
+    setModalOpenedAt(null);
   };
 
   const handleRemove = (e: React.MouseEvent, symbol: string) => {
@@ -350,7 +368,7 @@ export default function FavoritesPage() {
 
       <CoinModal
         coin={selected}
-        onClose={() => setSelected(null)}
+        onClose={handleCloseModal}
         onToggleFavorite={(coin) => {
           if (isFavorite(coin.symbol)) {
             void remove(coin.symbol);
@@ -359,6 +377,11 @@ export default function FavoritesPage() {
           }
         }}
         isFavorite={isFavorite}
+      />
+
+      <PostModalSurvey
+        request={surveyRequest}
+        onDone={() => setSurveyRequest(null)}
       />
     </div>
   );
