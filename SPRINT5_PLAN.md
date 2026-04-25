@@ -63,40 +63,98 @@ Living document. Update checkboxes as items ship. Keep in sync with the notebook
   - New telemetry event `favorite_opened` with `source` field (`favorites_page` vs future `bubble_board`)
   - Build + lint + TS clean, prod regression checked on `/api/explanation`
 
-- [ ] **A3 — Custom coin search + pin** *(addresses Sankar: users want coins beyond top 100)*
-  - Use CoinGecko `/api/v3/coins/list` (cached server-side) for autocomplete
-  - On select, fetch single-coin market data via `/api/v3/coins/{id}/market_chart` or single-coin endpoint
-  - Pinned coins persist in localStorage, render in the bubble chart alongside the top 100
-  - New backend route `/api/coin-search?q=…` to proxy CoinGecko search (avoids CORS + throttling)
-  - Acceptance: search "matic" → find Polygon → pin → it appears in the bubble view as a legitimate bubble
+- [~] **A3 — Custom coin search + pin** ⏸ **deferred** 2026-04-25 (decision rationale below)
+  - **Rationale for deferral**: A3 only addresses one peer comment (Sankar) and isn't on any TA grade lever. Even the simple version is ~2 hours. That time is better spent on Phase B (TA's biggest critique), Phase C (class-required monetization), Phase D (2nd platform option), or Phase E (PWA, the hard 2nd-platform requirement). If we hit the demo with B–E shipped clean, we can come back and add A3 in 2 hours; if we don't, A3 wouldn't have moved the grade anyway.
+  - **If we revisit**: simple version is one backend search route (CoinGecko `/search` proxy), one market-data-by-ids route, a small autocomplete component, and persisting the picked coin to favorites so it joins the bubble board automatically.
+  - **The "stale · outside top 100" badge on the favorites page stays as the visible artifact of this deferral** until A3 is done.
 
 ### Phase B — real A/B test infrastructure (TA's biggest critique)
 
+**Test hypothesis (single variable)**: *"For novice users, presenting the AI explanation in plain-English language (vs. analyst-style standard language) materially improves comprehension while at least maintaining trust ratings."*
+
+**Why this hypothesis is the right one for Sprint 5**:
+- TA: comparisons must be *equivalent* — both variants must have the AI explanation card. Only ONE element differs.
+- Krissh / Aditya: isolate the variable; Sprint 4's Variant B bundled too many changes.
+- Kevin Lin: novices hit unknown vocabulary — directly testable with this hypothesis.
+- We already shipped both prompts (A1 ELI5) so the implementation is ready; the A/B is a routing layer on top.
+
+**Variant design (locked, single isolated variable = language framing)**:
+
+| Element | Variant A — Standard | Variant B — Plain English |
+|---|---|---|
+| AI explanation card | shown | shown |
+| Backend prompt | `eli5: false` (forced) | `eli5: true` (forced) |
+| AI-generated badge | shown | shown |
+| Trust chip (CoinGecko, high) | shown | shown |
+| Tier chip | shown | shown |
+| Watch-notes | shown | shown |
+| ELI5 toggle | **hidden** (locked into assignment) | **hidden** (locked into assignment) |
+| Card warm tint | off | on (existing `.eli5-active` class) |
+| Evidence drawer / market data / favorites flow | identical | identical |
+
+The ONLY thing that varies between A and B is the language style of the LLM-generated text + the visual cue (warm tint) that signals which mode is active. Same data, same model, same UI elements, same flow. This is the cleanest single-variable test we can run.
+
 - [ ] **B1 — Variant assignment**
-  - New `lib/variant.ts` module: deterministic A/B split from session ID (already in localStorage as `coincanvas-session-id`)
-  - 50/50 hash bucketing
-  - Read once at app boot, cache in module-scope; pass to all components needing it
-  - Telemetry event `variant_assigned` once per session
+  - New `web/src/lib/variant.ts` module
+  - Deterministic 50/50 hash bucketing from the existing `coincanvas-session-id` (sessionStorage)
+  - Module-scope cache so all components see the same variant within a session
+  - Variant resolved exactly once per session, persisted to sessionStorage as `coincanvas-variant`
+  - Telemetry: fires `variant_assigned` once per session with the chosen variant
 
-- [ ] **B2 — Variant A treatment (control)**
-  - Bare LLM summary in the AI interpretation card: hide the AI-generated badge, hide the trust chip, hide the ELI5 toggle
-  - Keep watch-notes (otherwise treatments diverge in content depth, not framing)
-  - Same backend, same model, same data — only the framing UI is different
+- [ ] **B2 — Variant override URL flag** (do alongside B1, same module)
+  - `?variant=a` / `?variant=b` query param overrides the assignment for the current session
+  - Persisted to sessionStorage so the override survives navigation
+  - Telemetry: fires `variant_overridden` so analysis can filter overrides out of real test data
+  - Used during the teaching-team demo to show both variants back-to-back
 
-- [ ] **B3 — Variant B treatment (treatment)**
-  - Full rich AI card: LLM summary + AI-generated badge + trust chip + ELI5 toggle + watch-notes
-  - This is the current production state plus the A1 toggle
+- [ ] **B3 — Variant-aware CoinModal**
+  - Read variant via `useVariant()` hook
+  - Hide the ELI5 toggle entirely (toggle is now a variant choice, not a user choice)
+  - Force the `eli5` flag in the `/api/explanation` POST body to `variant === "b"` (regardless of user's old localStorage pref — which we silently ignore for the duration of the test)
+  - Apply `.eli5-active` warm tint when variant === "b"
+  - Telemetry: extend `ai_explanation_loaded` payload with `variant: "a" | "b"` field
 
-- [ ] **B4 — In-app micro-survey on coin close**
-  - When the modal closes after >5s of viewing, show a small, dismissible 2-question prompt:
-    1. "How clear was this explanation?" (😕 / 🙂 / 🎯 → 0/1/2)
-    2. "How much did you trust it?" (1–5 stars)
-  - Skippable, non-blocking
-  - Telemetry: `comprehension_rated` and `trust_rated` events with variant + symbol + value
+- [ ] **B4 — Post-modal micro-survey**
+  - New component `web/src/components/PostModalSurvey.tsx`
+  - Triggered when the CoinModal closes after >5s of being open
+  - Rate-limited: at most one survey per 5-min window per session
+  - Two questions:
+    1. "How clear was that explanation?" → 😕 Vague (0) / 🙂 OK (1) / 🎯 Clear (2)
+    2. "How much do you trust it?" → 1–5 stars
+  - Auto-dismisses after 30s of inactivity
+  - Skippable via X button or pressing Escape
+  - Telemetry events:
+    - `comprehension_rated` { variant, symbol, value }
+    - `trust_rated` { variant, symbol, value }
+    - `survey_shown` { variant, symbol }
+    - `survey_dismissed` { variant, symbol, reason: "skip" | "timeout" }
+  - Mounts at the page root level (so it's available from both `/` and `/favorites`)
 
-- [ ] **B5 — Variant override URL flag**
-  - `?variant=a` / `?variant=b` query param overrides the assignment for the session
-  - Lets us demo both variants live during the teaching-team meeting
+- [ ] **B5 — Surface variant in the existing telemetry export**
+  - Settings page already has a "Download telemetry" button
+  - Confirm export now includes `variant` field on relevant events so Maya can split A/B in the analysis spreadsheet
+  - No new code; just verification
+
+**Implementation order**:
+1. B1 + B2 together (lib/variant.ts is a single small module)
+2. B3 (CoinModal changes — small diff: hide toggle, force flag, add tint when B)
+3. B4 (PostModalSurvey component — biggest UI lift)
+4. B5 (verification only)
+
+**Acceptance criteria for Phase B**:
+- Hitting `/` returns variant A or B deterministically per session
+- `?variant=a` / `?variant=b` correctly forces the variant
+- Variant A renders standard-language explanation; Variant B renders plain-English with warm tint; ELI5 toggle is invisible in both
+- Closing a modal after >5s shows the survey; ratings record `variant` correctly
+- `/settings` telemetry export contains rows tagged with the variant
+- TS + ESLint + `npm run build` clean
+- Preview deploy verified, fast-forward merge to main, prod alias re-attached, no regressions on existing flows
+
+**Risk register**:
+- *Hidden ELI5 toggle confuses returning users*: short test window (~1-2 weeks), then we can decide whether to restore the toggle for production after the test concludes. Notebook will document this clearly.
+- *Survey is annoying mid-test*: 5-min rate limit + 30s auto-dismiss + Esc dismissal makes it skippable
+- *Variant assignment instability across sessions*: deterministic per session ID, not per user — that's expected and acceptable for a small test cohort
+- *Demo overrides leak into production data*: telemetry tags overrides separately so analysis can filter them
 
 ### Phase C — monetization implementation (class hard requirement)
 
@@ -291,3 +349,5 @@ Hits every Sprint 5 rubric line: end-to-end, real services, real data, A/B test 
 | 2026-04-25 | Plan re-sequenced: Phase A → E (UX wins → A/B infra → monetization → ops dashboard → PWA), notebook + video deferred to post-dev | ✅ |
 | 2026-04-25 | Phase A1: ELI5 toggle shipped to prod (segmented pill + warm tint + refresh state, localStorage persistence, telemetry) | ✅ |
 | 2026-04-25 | Phase A2: BubbleChart click threshold (6px drag-vs-click guard) + favorites page rewritten as a live, modal-launching dashboard with summary stats, sort, edge-stripe cards, stale handling, telemetry | ✅ |
+| 2026-04-25 | A3 deferred — peer-feedback nicety, no grade lever; revisit only if B–E ship clean with time to spare | ⏸ |
+| 2026-04-25 | Phase B sub-plan locked: single-variable A/B (standard vs plain-English language), 4 B-items + telemetry verification | ✅ |
