@@ -351,3 +351,4 @@ Hits every Sprint 5 rubric line: end-to-end, real services, real data, A/B test 
 | 2026-04-25 | Phase A2: BubbleChart click threshold (6px drag-vs-click guard) + favorites page rewritten as a live, modal-launching dashboard with summary stats, sort, edge-stripe cards, stale handling, telemetry | ✅ |
 | 2026-04-25 | A3 deferred — peer-feedback nicety, no grade lever; revisit only if B–E ship clean with time to spare | ⏸ |
 | 2026-04-25 | Phase B sub-plan locked: single-variable A/B (standard vs plain-English language), 4 B-items + telemetry verification | ✅ |
+| 2026-04-25 | Pre-Phase-B: sharpened both system prompts so the variants are sharply differentiated (Standard now uses pro-trader vocabulary: drawdown / turnover ratio / distribution / capitulation; ELI5 explicitly bans 17+ jargon terms and forces dollar-translation of percentages). Verified on prod with ETH and SOL — A/B contrast is now production-grade. | ✅ |
