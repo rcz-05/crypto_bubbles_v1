@@ -13,7 +13,10 @@ const OVERRIDE_KEY = "coincanvas-variant-override";
 let cachedVariant: Variant | null = null;
 
 function canUseSessionStorage() {
-  return typeof window !== "undefined" && Boolean(window.sessionStorage);
+  // Variant persists in localStorage so PWA cold launches don't reroll the
+  // assignment (iOS Safari may reap the standalone window's sessionStorage
+  // between launches). The function name is kept for callsite stability.
+  return typeof window !== "undefined" && Boolean(window.localStorage);
 }
 
 function isVariant(value: string | null): value is Variant {
@@ -43,13 +46,13 @@ function peekVariant(): Variant {
   if (override) return override;
   const adminFlag = peekAdminFlags().forceVariant;
   if (adminFlag) return adminFlag;
-  const stored = window.sessionStorage.getItem(VARIANT_KEY);
+  const stored = window.localStorage.getItem(VARIANT_KEY);
   return isVariant(stored) ? stored : "a";
 }
 
 function persistVariant(variant: Variant) {
   if (!canUseSessionStorage()) return;
-  window.sessionStorage.setItem(VARIANT_KEY, variant);
+  window.localStorage.setItem(VARIANT_KEY, variant);
 }
 
 export function getVariant(): Variant {
@@ -59,18 +62,18 @@ export function getVariant(): Variant {
   if (adminFlag && cachedVariant !== adminFlag) {
     cachedVariant = adminFlag;
     persistVariant(adminFlag);
-    window.sessionStorage.setItem(ASSIGNED_KEY, "1");
+    window.localStorage.setItem(ASSIGNED_KEY, "1");
     return adminFlag;
   }
 
   const override = readOverrideFromUrl();
   if (override) {
-    const previousVariant = cachedVariant ?? window.sessionStorage.getItem(VARIANT_KEY);
-    const previousOverride = window.sessionStorage.getItem(OVERRIDE_KEY);
+    const previousVariant = cachedVariant ?? window.localStorage.getItem(VARIANT_KEY);
+    const previousOverride = window.localStorage.getItem(OVERRIDE_KEY);
     cachedVariant = override;
     persistVariant(override);
-    window.sessionStorage.setItem(OVERRIDE_KEY, override);
-    window.sessionStorage.setItem(ASSIGNED_KEY, "1");
+    window.localStorage.setItem(OVERRIDE_KEY, override);
+    window.localStorage.setItem(ASSIGNED_KEY, "1");
     if (previousOverride !== override) {
       trackEvent({
         type: "variant_overridden",
@@ -86,12 +89,12 @@ export function getVariant(): Variant {
 
   if (cachedVariant) return cachedVariant;
 
-  const stored = window.sessionStorage.getItem(VARIANT_KEY);
-  const assignedAlready = window.sessionStorage.getItem(ASSIGNED_KEY) === "1";
+  const stored = window.localStorage.getItem(VARIANT_KEY);
+  const assignedAlready = window.localStorage.getItem(ASSIGNED_KEY) === "1";
   if (isVariant(stored)) {
     cachedVariant = stored;
     if (!assignedAlready) {
-      window.sessionStorage.setItem(ASSIGNED_KEY, "1");
+      window.localStorage.setItem(ASSIGNED_KEY, "1");
       trackEvent({
         type: "variant_assigned",
         recordedAt: new Date().toISOString(),
@@ -104,7 +107,7 @@ export function getVariant(): Variant {
   const variant = hashSessionToVariant(getSessionId());
   cachedVariant = variant;
   persistVariant(variant);
-  window.sessionStorage.setItem(ASSIGNED_KEY, "1");
+  window.localStorage.setItem(ASSIGNED_KEY, "1");
   trackEvent({
     type: "variant_assigned",
     recordedAt: new Date().toISOString(),

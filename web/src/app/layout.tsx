@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, Syne, Fredoka } from "next/font/google";
 import { PageTransition } from "@/components/PageTransition";
+import { ServiceWorkerProvider } from "@/components/ServiceWorkerProvider";
 import "./globals.css";
 
 const display = Syne({
@@ -21,7 +22,24 @@ const bubble = Fredoka({
 
 export const metadata: Metadata = {
   title: "CoinCanvas",
-  description: "A guided crypto market canvas for beginners who want context before action.",
+  description:
+    "A guided crypto market canvas for beginners who want context before action.",
+  applicationName: "CoinCanvas",
+  appleWebApp: {
+    capable: true,
+    title: "CoinCanvas",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#f3efe5",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -33,6 +51,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${display.variable} ${body.variable} ${bubble.variable}`}>
         <PageTransition>{children}</PageTransition>
+        <ServiceWorkerProvider />
       </body>
     </html>
   );
