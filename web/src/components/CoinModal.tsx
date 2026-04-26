@@ -378,6 +378,7 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
           <div className="modal-grabber" />
         </div>
 
+        <div className="modal-card-scroll">
         <div className="modal-header">
           <div className="modal-identity">
             {coin.image ? (
@@ -723,6 +724,7 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
             ))}
           </div>
         </section>
+        </div>
       </div>
 
       <ProCheckoutSheet

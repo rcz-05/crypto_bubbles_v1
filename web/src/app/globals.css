@@ -185,10 +185,28 @@ button {
   width: min(1280px, calc(100% - 32px));
   margin: 0 auto;
   padding: 28px 0 40px;
-  animation: page-rise 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-@keyframes page-rise {
+/* ---- Page transition (UI-14) ---- */
+
+.page-transition {
+  /* Wrapper for the entire route content; animation applied via slide-* class. */
+  display: contents;
+}
+
+.page-transition.slide-fade > * {
+  animation: page-slide-fade 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.page-transition.slide-right > * {
+  animation: page-slide-right 340ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.page-transition.slide-left > * {
+  animation: page-slide-left 340ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes page-slide-fade {
   from {
     opacity: 0;
     transform: translate3d(0, 10px, 0);
@@ -199,8 +217,32 @@ button {
   }
 }
 
+@keyframes page-slide-right {
+  from {
+    opacity: 0;
+    transform: translate3d(40px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes page-slide-left {
+  from {
+    opacity: 0;
+    transform: translate3d(-40px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .page-wrap {
+  .page-transition.slide-fade > *,
+  .page-transition.slide-right > *,
+  .page-transition.slide-left > * {
     animation: none;
   }
 }
@@ -611,16 +653,26 @@ button {
   position: relative;
   width: min(1080px, 96vw);
   max-height: min(90vh, 960px);
-  overflow: auto;
-  padding: 24px;
+  overflow: hidden;
   border-radius: 30px;
   background: var(--surface-strong);
   border: 1px solid rgba(24, 33, 40, 0.1);
   box-shadow: 0 32px 96px rgba(22, 30, 36, 0.2);
   display: flex;
   flex-direction: column;
-  gap: 18px;
   animation: modal-rise 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.modal-card-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  /* Leave headroom for the absolute-positioned X button so headings don't sit
+     directly under it on first paint. */
+  padding-top: 18px;
 }
 
 .modal-close-x {
@@ -712,20 +764,21 @@ button {
     width: 100%;
     max-width: 100%;
     max-height: 92vh;
-    padding-top: 18px;
     border-radius: 24px 24px 0 0;
     animation: modal-sheet-rise 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   .modal-card.closing {
     animation: modal-sheet-fall 300ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
   }
+  .modal-card-scroll {
+    padding: 14px 18px 18px;
+  }
   .modal-grabber-area {
     display: flex;
     justify-content: center;
     align-items: center;
     height: 28px;
-    margin: -8px -16px 0;
-    padding: 4px 0;
+    flex-shrink: 0;
     cursor: grab;
     touch-action: none;
     user-select: none;
@@ -734,10 +787,14 @@ button {
     cursor: grabbing;
   }
   .modal-close-x {
-    top: 18px;
-    right: 14px;
+    top: 12px;
+    right: 12px;
     width: 36px;
     height: 36px;
+  }
+  .modal-header {
+    /* X is now top-right of the card frame; keep 48px clearance on mobile. */
+    padding-right: 48px;
   }
 }
 
@@ -776,6 +833,11 @@ button {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.modal-header {
+  /* Leave space for the absolute-positioned X close button at top-right. */
+  padding-right: 52px;
 }
 
 .modal-identity {

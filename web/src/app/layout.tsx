@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Instrument_Sans, Syne, Fredoka } from "next/font/google";
+import { PageTransition } from "@/components/PageTransition";
 import "./globals.css";
 
 const display = Syne({
@@ -30,7 +31,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${display.variable} ${body.variable} ${bubble.variable}`}>{children}</body>
+      <body className={`${display.variable} ${body.variable} ${bubble.variable}`}>
+        <PageTransition>{children}</PageTransition>
+      </body>
     </html>
   );
 }
