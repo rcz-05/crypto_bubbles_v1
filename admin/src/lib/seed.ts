@@ -91,28 +91,33 @@ export function generateSeedEvents(opts: {
 } = {}): SeedEvent[] {
   const now = opts.nowMs ?? Date.now();
   const rng = new Rng(opts.rngSeed ?? 0xc01ca5);
-  const sessionCount = opts.sessionCount ?? 22;
-  const fourDaysMs = 4 * 24 * 60 * 60 * 1000;
+  const sessionCount = opts.sessionCount ?? 34;
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 
   const events: SeedEvent[] = [];
 
-  // Carve out the last 5 sessions to land in the last 45 min so the
-  // Activity panel + active-session count show fresh data on demo time.
-  const FRESH_SESSIONS = Math.min(5, Math.floor(sessionCount * 0.22));
-  const fortyFiveMinMs = 45 * 60 * 1000;
+  // Carve out fresh sessions to land in the last 50 min so the Activity panel,
+  // active-session count, and live event stream show motion on demo open.
+  const FRESH_SESSIONS = Math.min(9, Math.floor(sessionCount * 0.28));
+  const fiftyMinMs = 50 * 60 * 1000;
 
   for (let s = 0; s < sessionCount; s++) {
     let sessionStart: number;
     if (s < FRESH_SESSIONS) {
-      // Spread across last 45 minutes; one of them within the last 5 min for
-      // the "active sessions" count to be non-zero.
-      const offset = s === 0 ? rng.pickFloat(0, 4) * 60 * 1000 : rng.pickFloat(0, fortyFiveMinMs);
+      // Spread across last 50 minutes; first two within the last 4 min so the
+      // active-sessions count is non-zero and the per-minute sparkline has
+      // recent peaks.
+      const offset =
+        s < 2
+          ? rng.pickFloat(0, 4) * 60 * 1000
+          : rng.pickFloat(0, fiftyMinMs);
       sessionStart = now - offset;
     } else {
-      // Older sessions weighted toward recent: skew with cubic toward 1.
+      // Older sessions weighted toward recent: skew with cubic toward 1, but
+      // not too aggressively so the sparkline shows activity across the week.
       const u = rng.next();
-      const skewed = 1 - Math.pow(1 - u, 3);
-      sessionStart = now - fourDaysMs * skewed;
+      const skewed = 1 - Math.pow(1 - u, 2.4);
+      sessionStart = now - sevenDaysMs * skewed;
     }
 
     const variant: Variant = rng.bernoulli(0.55) ? "a" : "b";
@@ -145,7 +150,7 @@ export function generateSeedEvents(opts: {
     }
 
     // 3-9 modal opens per session
-    const modalCount = rng.pickInt(3, 9);
+    const modalCount = rng.pickInt(4, 13);
     for (let i = 0; i < modalCount; i++) {
       const coin = rng.weighted(COIN_DISTRIBUTION);
       const sym = coin.symbol;
@@ -251,7 +256,7 @@ export function generateSeedEvents(opts: {
       }
 
       // Sometimes click a source
-      if (rng.bernoulli(0.35)) {
+      if (rng.bernoulli(0.42)) {
         cursor += rng.pickInt(2_000, 18_000);
         events.push({
           type: "source_opened",
@@ -261,8 +266,8 @@ export function generateSeedEvents(opts: {
         });
       }
 
-      // Survey shown 25% chance (only if modal open >5s)
-      if (rng.bernoulli(0.25)) {
+      // Survey shown 32% chance (only if modal open >5s)
+      if (rng.bernoulli(0.32)) {
         cursor += rng.pickInt(6_000, 18_000);
         events.push({
           type: "survey_shown",
@@ -271,7 +276,7 @@ export function generateSeedEvents(opts: {
           payload: { variant, symbol: sym },
         });
         // Variant B comprehension μ=1.7, A μ=1.4; trust B μ=4.1, A μ=3.3
-        if (rng.bernoulli(0.7)) {
+        if (rng.bernoulli(0.78)) {
           const compMu = variant === "b" ? 1.7 : 1.4;
           const compRaw = Math.round(rng.normal(compMu, 0.6));
           const comp = Math.max(0, Math.min(2, compRaw)) as 0 | 1 | 2;
@@ -305,7 +310,7 @@ export function generateSeedEvents(opts: {
       }
 
       // Sometimes save favorite
-      if (rng.bernoulli(0.18)) {
+      if (rng.bernoulli(0.24)) {
         cursor += rng.pickInt(1_500, 6_000);
         events.push({
           type: "favorite_added",
