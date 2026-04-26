@@ -586,6 +586,7 @@ button {
   padding: 20px;
   background: rgba(18, 25, 30, 0.56);
   backdrop-filter: blur(12px);
+  animation: modal-backdrop-fade 220ms ease-out;
 }
 
 .modal-card {
@@ -600,6 +601,55 @@ button {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  animation: modal-rise 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes modal-backdrop-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 32px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@media (max-width: 760px) {
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .modal-card {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92vh;
+    border-radius: 24px 24px 0 0;
+    animation: modal-sheet-rise 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+@keyframes modal-sheet-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 100%, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-backdrop,
+  .modal-card {
+    animation: none;
+  }
 }
 
 .modal-header,
@@ -955,6 +1005,7 @@ button {
   padding: 20px;
   background: rgba(18, 25, 30, 0.7);
   backdrop-filter: blur(14px);
+  animation: modal-backdrop-fade 220ms ease-out;
 }
 
 .onboarding-card {
@@ -967,7 +1018,26 @@ button {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  animation: fadeIn 0.3s ease-out;
+  animation: modal-rise 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (max-width: 760px) {
+  .onboarding-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .onboarding-card {
+    width: 100%;
+    border-radius: 24px 24px 0 0;
+    animation: modal-sheet-rise 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-backdrop,
+  .onboarding-card {
+    animation: none;
+  }
 }
 
 .onboarding-progress {
@@ -1657,7 +1727,7 @@ button {
 @keyframes survey-enter {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.98);
+    transform: translateY(28px) scale(0.98);
   }
   to {
     opacity: 1;
@@ -2826,6 +2896,29 @@ button {
   background: #2c4f7d;
 }
 
+/* ---- Smooth disclosure expand (UI-3) ---- */
+
+@keyframes details-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+details[open] > *:not(summary) {
+  animation: details-slide-down 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  details[open] > *:not(summary) {
+    animation: none;
+  }
+}
+
 /* ---- Board page slide-in (Phase D-mobile-2) ---- */
 
 .board-content {
@@ -2865,9 +2958,25 @@ button {
   animation: board-slide-in-left 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+@keyframes board-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.board-content.slide-from-fade {
+  animation: board-fade-in 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .board-content.slide-from-right,
-  .board-content.slide-from-left {
+  .board-content.slide-from-left,
+  .board-content.slide-from-fade {
     animation: none;
   }
 }

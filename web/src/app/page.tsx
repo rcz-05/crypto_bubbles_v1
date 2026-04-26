@@ -9,7 +9,6 @@ import { useMarketStore } from "@/store/market";
 import { useFavoritesStore } from "@/store/favorites";
 import { useBubblePagination } from "@/hooks/useBubblePagination";
 import { useMeasure } from "@/hooks/useMeasure";
-import { useShakeRefresh, requestMotionPermission } from "@/hooks/useShakeRefresh";
 import { Coin, TimeFrame, getChangeForTimeFrame } from "@/lib/coingecko";
 import { HeaderTabs } from "@/components/HeaderTabs";
 import { OnboardingOverlay } from "@/components/OnboardingOverlay";
@@ -39,7 +38,6 @@ export default function HomePage() {
   const [selected, setSelected] = useState<Coin | null>(null);
   const [modalOpenedAt, setModalOpenedAt] = useState<number | null>(null);
   const [surveyRequest, setSurveyRequest] = useState<SurveyRequest | null>(null);
-  const [motionState, setMotionState] = useState<"idle" | "enabled" | "blocked">("idle");
   const deferredSearch = useDeferredValue(search);
   const variant = useVariant();
 
@@ -68,7 +66,7 @@ export default function HomePage() {
     setPage,
   } = useBubblePagination(filtered, timeFrame);
 
-  const [slideDir, setSlideDir] = useState<"left" | "right">("right");
+  const [slideDir, setSlideDir] = useState<"left" | "right" | "fade">("right");
 
   const handlePageChange = useCallback(
     (next: number) => {
@@ -83,12 +81,6 @@ export default function HomePage() {
     },
     [page, setPage, timeFrame],
   );
-
-  const handleRefresh = useCallback(() => {
-    void fetchCoins();
-  }, [fetchCoins]);
-
-  useShakeRefresh(handleRefresh);
 
   const handleSelect = useCallback((coin: Coin) => {
     setSelected(coin);
@@ -112,10 +104,13 @@ export default function HomePage() {
     setModalOpenedAt(null);
   }, [modalOpenedAt, selected, variant]);
 
-  const handleEnableMotion = useCallback(async () => {
-    const granted = await requestMotionPermission();
-    setMotionState(granted ? "enabled" : "blocked");
-  }, []);
+  const [refreshNonce, setRefreshNonce] = useState(0);
+
+  const handleRefresh = useCallback(() => {
+    setSlideDir("fade");
+    setRefreshNonce((n) => n + 1);
+    void fetchCoins();
+  }, [fetchCoins]);
 
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
@@ -248,13 +243,6 @@ export default function HomePage() {
               <button className="refresh-btn" onClick={handleRefresh}>
                 Refresh prices
               </button>
-              <button className="refresh-btn secondary" onClick={handleEnableMotion}>
-                {motionState === "enabled"
-                  ? "Shake ready"
-                  : motionState === "blocked"
-                    ? "Motion blocked"
-                    : "Enable shake"}
-              </button>
             </div>
 
             <p className="panel-note">
@@ -331,7 +319,7 @@ export default function HomePage() {
           ) : null}
 
           <div
-            key={isMobile ? `${timeFrame}-${page}` : "all"}
+            key={`${isMobile ? `${timeFrame}-${page}` : "all"}-${refreshNonce}`}
             className={`board-content slide-from-${slideDir}`}
           >
             <BubbleChart
