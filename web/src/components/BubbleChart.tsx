@@ -177,9 +177,9 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     // grow modestly so the size hierarchy reads more clearly.
     const sparse = n <= 30;
     const medium = n <= 60;
-    const minR = sparse ? 42 : medium ? 32 : 26;
+    const minR = sparse ? 34 : medium ? 28 : 24;
     const minDim = Math.min(width, height);
-    const maxR = sparse ? minDim * 0.16 : medium ? minDim * 0.115 : minDim * 0.09;
+    const maxR = sparse ? minDim * 0.125 : medium ? minDim * 0.1 : minDim * 0.082;
 
     // Random placement using deterministic hash — no grid pattern
     return items.map((v) => {
