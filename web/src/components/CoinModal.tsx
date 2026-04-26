@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProCheckoutSheet } from "@/components/ProCheckoutSheet";
 import { ProInsightsCard } from "@/components/ProInsightsCard";
 import { CoinContext } from "@/lib/coin-context";
@@ -228,9 +228,25 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
     return () => controller.abort();
   }, [coin, explanationKey, eli5, variant]);
 
-  const stableClose = useCallback(() => {
-    onClose();
-  }, [onClose]);
+  // Animated dismiss: slide-down then unmount.
+  const [closing, setClosing] = useState(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{ startY: number; deltaY: number; active: boolean }>({
+    startY: 0,
+    deltaY: 0,
+    active: false,
+  });
+
+  const requestClose = useCallback(() => {
+    if (closing) return;
+    setClosing(true);
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(onClose, reduced ? 0 : 320);
+  }, [closing, onClose]);
+
+  const stableClose = requestClose;
 
   const handleProIntent = useCallback(() => {
     if (!coin) return;
@@ -271,19 +287,97 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
     return ((coin.high_24h - coin.low_24h) / coin.low_24h) * 100;
   }, [coin]);
 
+  // --- mobile slide-down-to-dismiss gesture (only fires on grabber handle) ---
+  const handleGrabTouchStart = useCallback((e: React.TouchEvent) => {
+    if (closing) return;
+    dragRef.current = {
+      startY: e.touches[0].clientY,
+      deltaY: 0,
+      active: true,
+    };
+  }, [closing]);
+
+  const handleGrabTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!dragRef.current.active || !cardRef.current) return;
+    let dy = e.touches[0].clientY - dragRef.current.startY;
+    if (dy < 0) {
+      // Rubber-band upward pull (gentle resistance, max 12px)
+      dy = Math.max(-12, dy * 0.18);
+    }
+    dragRef.current.deltaY = dy;
+    cardRef.current.style.transform = `translate3d(0, ${dy}px, 0)`;
+    cardRef.current.style.transition = "none";
+  }, []);
+
+  const handleGrabTouchEnd = useCallback(() => {
+    if (!dragRef.current.active || !cardRef.current) return;
+    const dy = dragRef.current.deltaY;
+    dragRef.current.active = false;
+    if (dy > 120) {
+      // Threshold crossed → animate the rest of the way out and unmount.
+      cardRef.current.style.transition =
+        "transform 220ms cubic-bezier(0.4, 0, 0.6, 1), opacity 220ms ease";
+      cardRef.current.style.transform = "translate3d(0, 100%, 0)";
+      cardRef.current.style.opacity = "0";
+      window.setTimeout(onClose, 220);
+    } else {
+      // Snap back to rest.
+      cardRef.current.style.transition =
+        "transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1)";
+      cardRef.current.style.transform = "";
+    }
+  }, [onClose]);
+
   if (!coin) return null;
   const positive = (coin.price_change_percentage_24h ?? 0) >= 0;
   const fav = isFavorite(coin.symbol);
 
   return (
-    <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 100 }}>
+    <div
+      className={`modal-backdrop${closing ? " closing" : ""}`}
+      onClick={requestClose}
+      style={{ zIndex: 100 }}
+    >
       {/* Click outside to close */}
       <div
-        className="modal-card"
+        ref={cardRef}
+        className={`modal-card${closing ? " closing" : ""}`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
+        <button
+          type="button"
+          className="modal-close-x"
+          onClick={requestClose}
+          aria-label="Close"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.4}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M6 6 L18 18 M18 6 L6 18" />
+          </svg>
+        </button>
+
+        <div
+          className="modal-grabber-area"
+          onTouchStart={handleGrabTouchStart}
+          onTouchMove={handleGrabTouchMove}
+          onTouchEnd={handleGrabTouchEnd}
+          onTouchCancel={handleGrabTouchEnd}
+          aria-hidden
+        >
+          <div className="modal-grabber" />
+        </div>
+
         <div className="modal-header">
           <div className="modal-identity">
             {coin.image ? (
@@ -316,9 +410,6 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
               type="button"
             >
               {fav ? "Saved" : "Save to favorites"}
-            </button>
-            <button className="refresh-btn secondary" onClick={onClose} type="button">
-              Close
             </button>
           </div>
         </div>

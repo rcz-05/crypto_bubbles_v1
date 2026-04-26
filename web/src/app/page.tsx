@@ -188,7 +188,6 @@ export default function HomePage() {
       <main className="page-wrap home-page">
         <section className="hero-grid">
           <div className="hero-panel">
-            <p className="hero-kicker">Sprint 4 learning prototype</p>
             <h1>Understand a fast mover without leaving the board.</h1>
             <p className="hero-copy">
               CoinCanvas keeps the bubble scan, then adds a beginner-friendly explanation,

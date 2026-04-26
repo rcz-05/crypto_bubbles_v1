@@ -185,6 +185,24 @@ button {
   width: min(1280px, calc(100% - 32px));
   margin: 0 auto;
   padding: 28px 0 40px;
+  animation: page-rise 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes page-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-wrap {
+    animation: none;
+  }
 }
 
 .page-wrap.home-page,
@@ -590,6 +608,7 @@ button {
 }
 
 .modal-card {
+  position: relative;
   width: min(1080px, 96vw);
   max-height: min(90vh, 960px);
   overflow: auto;
@@ -602,6 +621,70 @@ button {
   flex-direction: column;
   gap: 18px;
   animation: modal-rise 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.modal-close-x {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  border: 1px solid rgba(24, 33, 40, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary);
+  cursor: pointer;
+  z-index: 4;
+  transition: background 160ms ease, border-color 160ms ease, transform 100ms ease;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.modal-close-x:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(24, 33, 40, 0.24);
+  color: var(--text);
+}
+
+.modal-close-x:active {
+  transform: scale(0.94);
+}
+
+.modal-grabber-area {
+  display: none;
+}
+
+.modal-grabber {
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(24, 33, 40, 0.18);
+}
+
+.modal-backdrop.closing {
+  animation: modal-backdrop-out 280ms ease-in forwards;
+}
+
+.modal-card.closing {
+  animation: modal-fall 300ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+@keyframes modal-backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes modal-fall {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0) scale(0.985);
+  }
 }
 
 @keyframes modal-backdrop-fade {
@@ -629,8 +712,32 @@ button {
     width: 100%;
     max-width: 100%;
     max-height: 92vh;
+    padding-top: 18px;
     border-radius: 24px 24px 0 0;
     animation: modal-sheet-rise 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .modal-card.closing {
+    animation: modal-sheet-fall 300ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  }
+  .modal-grabber-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 28px;
+    margin: -8px -16px 0;
+    padding: 4px 0;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+  .modal-grabber-area:active {
+    cursor: grabbing;
+  }
+  .modal-close-x {
+    top: 18px;
+    right: 14px;
+    width: 36px;
+    height: 36px;
   }
 }
 
@@ -642,6 +749,17 @@ button {
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes modal-sheet-fall {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, 100%, 0);
   }
 }
 
@@ -2450,18 +2568,6 @@ button {
   display: none;
 }
 
-.pro-signal-breakdown summary::before {
-  content: "▸";
-  display: inline-block;
-  margin-right: 8px;
-  transition: transform 180ms ease;
-  color: var(--text-secondary);
-}
-
-.pro-signal-breakdown[open] summary::before {
-  transform: rotate(90deg);
-}
-
 .pro-component-list {
   display: grid;
   gap: 10px;
@@ -2896,7 +3002,36 @@ button {
   background: #2c4f7d;
 }
 
-/* ---- Smooth disclosure expand (UI-3) ---- */
+/* ---- Smooth disclosure expand + uniform triangle chevron (UI-3 / UI-11) ---- */
+
+details > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+details > summary::before {
+  content: "";
+  display: inline-block;
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 7px;
+  border-color: transparent transparent transparent currentColor;
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  opacity: 0.7;
+}
+
+details[open] > summary::before {
+  transform: rotate(90deg);
+}
 
 @keyframes details-slide-down {
   from {
@@ -2916,6 +3051,9 @@ details[open] > *:not(summary) {
 @media (prefers-reduced-motion: reduce) {
   details[open] > *:not(summary) {
     animation: none;
+  }
+  details > summary::before {
+    transition: none;
   }
 }
 
