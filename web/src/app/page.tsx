@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BubbleChart } from "@/components/BubbleChart";
 import { BubblePager } from "@/components/BubblePager";
 import { CoinModal } from "@/components/CoinModal";
+import { VariantBadge } from "@/components/VariantBadge";
 import { useMarketStore } from "@/store/market";
 import { useFavoritesStore } from "@/store/favorites";
 import { useBubblePagination } from "@/hooks/useBubblePagination";
@@ -170,6 +171,7 @@ export default function HomePage() {
           <span className="brand-dot" />
           CoinCanvas
         </Link>
+        <VariantBadge />
 
         <div className="controls compact">
           <Link href="/favorites" className="nav-link">

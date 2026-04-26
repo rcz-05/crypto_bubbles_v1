@@ -3181,6 +3181,38 @@ details[open] > *:not(summary) {
   }
 }
 
+/* ---- Variant badge (UI demo aid) ---- */
+
+.variant-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid transparent;
+  cursor: help;
+  user-select: none;
+  font-family: var(--font-display), inherit;
+}
+
+.variant-badge.variant-a {
+  background: rgba(56, 189, 248, 0.16);
+  color: #0e7490;
+  border-color: rgba(56, 189, 248, 0.36);
+}
+
+.variant-badge.variant-b {
+  background: rgba(251, 146, 60, 0.16);
+  color: #b8530a;
+  border-color: rgba(251, 146, 60, 0.4);
+}
+
 /* ---- Bubble pager — mobile pagination (Phase D-mobile-1) ---- */
 
 .bubble-pager {

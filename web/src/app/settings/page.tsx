@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { ProCheckoutSheet } from "@/components/ProCheckoutSheet";
+import { VariantBadge } from "@/components/VariantBadge";
 import { loadLocalFavorites } from "@/lib/favorites";
 import {
   PRO_PRICE_USD,
@@ -112,6 +113,7 @@ export default function SettingsPage() {
           <span className="brand-dot" />
           SETTINGS
         </div>
+        <VariantBadge />
         <div className="topbar-copy">Sources, instrumentation, and export tools.</div>
         <div className="controls">
           <Link href="/" className="nav-link">

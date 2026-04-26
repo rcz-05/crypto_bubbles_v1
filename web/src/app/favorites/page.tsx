@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { CoinModal } from "@/components/CoinModal";
 import { PostModalSurvey, type SurveyRequest } from "@/components/PostModalSurvey";
+import { VariantBadge } from "@/components/VariantBadge";
 import type { Coin } from "@/lib/coingecko";
 import { useFavoritesStore } from "@/store/favorites";
 import { useMarketStore } from "@/store/market";
@@ -162,6 +163,7 @@ export default function FavoritesPage() {
           <span className="brand-dot" />
           CoinCanvas
         </div>
+        <VariantBadge />
         <div className="topbar-copy">
           Your saved coins, with live data and the same AI interpretation a tap away.
         </div>
