@@ -68,9 +68,12 @@ export default function HomePage() {
     setPage,
   } = useBubblePagination(filtered, timeFrame);
 
+  const [slideDir, setSlideDir] = useState<"left" | "right">("right");
+
   const handlePageChange = useCallback(
     (next: number) => {
       if (next === page) return;
+      setSlideDir(next > page ? "right" : "left");
       trackEvent({
         type: "bubble_page_changed",
         recordedAt: new Date().toISOString(),
@@ -327,13 +330,18 @@ export default function HomePage() {
             <div className="ghost">No coins match that search.</div>
           ) : null}
 
-          <BubbleChart
-            data={pagedCoins}
-            width={drawWidth}
-            height={drawHeight}
-            timeFrame={timeFrame}
-            onSelect={handleSelect}
-          />
+          <div
+            key={isMobile ? `${timeFrame}-${page}` : "all"}
+            className={`board-content slide-from-${slideDir}`}
+          >
+            <BubbleChart
+              data={pagedCoins}
+              width={drawWidth}
+              height={drawHeight}
+              timeFrame={timeFrame}
+              onSelect={handleSelect}
+            />
+          </div>
 
           {status === "loading" && (
             <div className="board-overlay">

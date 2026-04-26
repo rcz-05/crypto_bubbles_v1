@@ -35,7 +35,7 @@ export function BubblePager({ page, totalPages, timeFrame, onChange }: Props) {
         disabled={page === 0}
         aria-label="Previous page"
       >
-        ◀
+        <ChevronIcon direction="left" />
       </button>
 
       <div className="bubble-pager-center">
@@ -63,8 +63,30 @@ export function BubblePager({ page, totalPages, timeFrame, onChange }: Props) {
         disabled={page === totalPages - 1}
         aria-label="Next page"
       >
-        ▶
+        <ChevronIcon direction="right" />
       </button>
     </div>
+  );
+}
+
+function ChevronIcon({ direction }: { direction: "left" | "right" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      {direction === "left" ? (
+        <polyline points="14 6 8 12 14 18" />
+      ) : (
+        <polyline points="10 6 16 12 10 18" />
+      )}
+    </svg>
   );
 }

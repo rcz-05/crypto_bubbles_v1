@@ -38,7 +38,7 @@ type PhysicsBody = {
 /* ------------------------------------------------------------------ */
 const COLLISION_STRENGTH = 0.5;
 const WALL_PADDING = 4;
-const BUBBLE_GAP = 6;
+const BUBBLE_GAP = 2;
 const CURSOR_RADIUS = 20;
 const CURSOR_FORCE = 0.15;
 const DRIFT_SPEED = 0.18;       // how fast bubbles float (px/frame)
@@ -177,9 +177,9 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
     // grow modestly so the size hierarchy reads more clearly.
     const sparse = n <= 30;
     const medium = n <= 60;
-    const minR = sparse ? 34 : medium ? 28 : 24;
+    const minR = sparse ? 30 : medium ? 26 : 22;
     const minDim = Math.min(width, height);
-    const maxR = sparse ? minDim * 0.125 : medium ? minDim * 0.1 : minDim * 0.082;
+    const maxR = sparse ? minDim * 0.108 : medium ? minDim * 0.092 : minDim * 0.078;
 
     // Random placement using deterministic hash — no grid pattern
     return items.map((v) => {
@@ -558,9 +558,7 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
             key={coin.id}
             ref={setGRef(i)}
             transform={`translate(${node.x},${node.y})`}
-            onClick={(e) => handleBubbleClick(coin, i, e)}
             className="bubble-node"
-            style={{ cursor: "pointer" }}
           >
             <title>
               {coin.name}: {change.toFixed(2)}% ({timeFrame})
@@ -577,6 +575,8 @@ export function BubbleChart({ data, width, height, timeFrame, onSelect }: Bubble
               fill={positive ? "url(#org-green)" : "url(#org-red)"}
               stroke={medalStroke ?? (positive ? "#2d8a2d" : "#b03a33")}
               strokeWidth={medalStroke ? medalWidth : 2.5}
+              className="bubble-hit"
+              onClick={(e) => handleBubbleClick(coin, i, e)}
             />
 
             {isHighRisk && !medal && (
