@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "ignoreCommand": "node -e \"console.log('Skipping legacy root Vercel project; deploy web/ via coincanvas-app and admin/ via coincanvas-admin.'); process.exit(0)\"",
   "buildCommand": "mkdir -p public && printf '%s\\n' '<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta http-equiv=\"refresh\" content=\"0;url=https://burbujitascripto.vercel.app\"><title>CoinCanvas</title><p>CoinCanvas deploys from the web/ Vercel project. Redirecting...</p>' > public/index.html",
   "outputDirectory": "public"
 }
