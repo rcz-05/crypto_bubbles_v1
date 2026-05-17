@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "CoinCanvas · Ops",
   description:
-    "Operations dashboard for CoinCanvas: live activity, A/B test, Pro funnel, performance.",
+    "Operations dashboard for CoinCanvas: live activity, telemetry health, and API performance.",
   robots: { index: false, follow: false },
 };
 

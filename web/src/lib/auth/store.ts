@@ -10,6 +10,7 @@
 
 import { randomUUID } from "crypto";
 import { sql } from "@vercel/postgres";
+import { postgresConfigured } from "@/lib/auth/config";
 import type { FavoriteCoin } from "@/lib/favorites";
 
 export type UserRecord = {
@@ -28,9 +29,7 @@ export type PublicUser = {
 };
 
 export const hasDb =
-  Boolean(process.env.POSTGRES_URL) ||
-  Boolean(process.env.POSTGRES_PRISMA_URL) ||
-  Boolean(process.env.POSTGRES_USER);
+  postgresConfigured();
 
 // ---- In-memory fallback (per server process) -------------------------------
 const memUsersById = new Map<string, UserRecord>();

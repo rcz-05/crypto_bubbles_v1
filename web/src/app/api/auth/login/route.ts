@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { authEnvironmentStatus } from "@/lib/auth/config";
 import { verifyPassword } from "@/lib/auth/password";
 import { sessionCookie, createSessionToken } from "@/lib/auth/session";
 import { findUserByEmail, toPublicUser } from "@/lib/auth/store";
@@ -7,7 +8,19 @@ import { findUserByEmail, toPublicUser } from "@/lib/auth/store";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+function unavailable() {
+  return NextResponse.json(
+    {
+      error: "Accounts are temporarily unavailable because production auth storage is not configured.",
+      code: "auth_not_configured",
+    },
+    { status: 503 },
+  );
+}
+
 export async function POST(req: Request) {
+  if (!authEnvironmentStatus().ready) return unavailable();
+
   let body: { email?: string; password?: string };
   try {
     body = await req.json();

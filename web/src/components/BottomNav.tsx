@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuthStore } from "@/store/auth";
 
 type Tab = {
   href: string;
@@ -64,6 +65,12 @@ const TABS: Tab[] = [
  */
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
+  const status = useAuthStore((s) => s.status);
+  const accountHref = status === "authenticated" ? "/settings" : "/login";
+  const accountLabel = status === "authenticated" ? "Account" : "Sign in";
+  const accountActive = status === "authenticated"
+    ? pathname.startsWith("/settings")
+    : pathname.startsWith("/login") || pathname.startsWith("/register");
 
   return (
     <nav className="bottom-nav" aria-label="Primary">
@@ -81,6 +88,17 @@ export function BottomNav() {
           </Link>
         );
       })}
+      <Link
+        href={accountHref}
+        className={`bottom-nav-item${accountActive ? " active" : ""}`}
+        aria-current={accountActive ? "page" : undefined}
+      >
+        <svg {...ICON_PROPS}>
+          <circle cx="12" cy="8" r="3.5" />
+          <path d="M5 20c1.4-4 4-6 7-6s5.6 2 7 6" />
+        </svg>
+        <span>{accountLabel}</span>
+      </Link>
     </nav>
   );
 }

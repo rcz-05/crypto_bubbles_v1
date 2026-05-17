@@ -8,7 +8,7 @@ export default function UnauthorizedPage() {
           Restricted dashboard. Append <code>?key=…</code> to authenticate.
         </p>
         <p style={{ color: "var(--muted)", fontSize: "0.78rem", marginTop: 16 }}>
-          Sprint 5 prototype — not for general access.
+          Operations-only access for the CoinCanvas production app.
         </p>
       </div>
     </div>

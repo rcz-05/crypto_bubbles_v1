@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authEnvironmentStatus } from "@/lib/auth/config";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import {
   addUserFavorite,
@@ -19,13 +20,25 @@ function guest() {
   );
 }
 
+function unavailable() {
+  return NextResponse.json(
+    {
+      error: "Account favorites are temporarily unavailable because production auth storage is not configured.",
+      code: "auth_not_configured",
+    },
+    { status: 503 },
+  );
+}
+
 export async function GET() {
+  if (!authEnvironmentStatus().ready) return unavailable();
   const user = await getCurrentUser();
   if (!user) return guest();
   return NextResponse.json(await listUserFavorites(user.id));
 }
 
 export async function POST(req: Request) {
+  if (!authEnvironmentStatus().ready) return unavailable();
   const user = await getCurrentUser();
   if (!user) return guest();
 
@@ -46,6 +59,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  if (!authEnvironmentStatus().ready) return unavailable();
   const user = await getCurrentUser();
   if (!user) return guest();
 

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { authEnvironmentStatus } from "@/lib/auth/config";
 import { hashPassword } from "@/lib/auth/password";
 import { sessionCookie, createSessionToken } from "@/lib/auth/session";
 import {
@@ -14,7 +15,19 @@ export const runtime = "nodejs";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function unavailable() {
+  return NextResponse.json(
+    {
+      error: "Accounts are temporarily unavailable because production auth storage is not configured.",
+      code: "auth_not_configured",
+    },
+    { status: 503 },
+  );
+}
+
 export async function POST(req: Request) {
+  if (!authEnvironmentStatus().ready) return unavailable();
+
   let body: {
     email?: string;
     password?: string;

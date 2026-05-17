@@ -44,7 +44,7 @@ export function AdminControls({
       >
         <ControlBlock
           title="Production mode"
-          description="Plain-English explanations are the only active user-facing mode. A/B and Pro demo overrides have been removed."
+          description="Plain-English explanations are the only active user-facing mode. Experiment overrides have been removed."
         >
           <span
             style={{

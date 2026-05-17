@@ -104,7 +104,7 @@ function buildRiskBadges(coin: Coin, isFallback: boolean): RiskBadge[] {
     badges.push({
       label: "Calmer Tape",
       tone: "calm",
-      detail: "This move is still meaningful, but it is not yet stretched by prototype guardrail thresholds.",
+      detail: "This move is still meaningful, but it is not yet stretched by CoinCanvas guardrail thresholds.",
     });
   }
 
@@ -194,9 +194,9 @@ function buildSummary(coin: Coin, isFallback: boolean) {
       direction === "up" ? "positive" : direction === "down" ? "negative" : "neutral"
     ] ?? null;
 
-  const prototypeFrame = isFallback
+  const contextFrame = isFallback
     ? "CoinCanvas does not have a curated research note for this asset yet, so this explanation is based on live market structure only."
-    : `In this learning prototype, the first context to check is: ${narrative}`;
+    : `The first context to check is: ${narrative}`;
 
   const volumeFrame =
     volumeRatio == null
@@ -210,7 +210,7 @@ function buildSummary(coin: Coin, isFallback: boolean) {
       ? "Intraday range data is incomplete."
       : `The intraday range spans ${rangePercent.toFixed(1)}%, so the move should be read with volatility in mind.`;
 
-  return `${movementFrame} ${prototypeFrame} ${volumeFrame} ${rangeFrame}`;
+  return `${movementFrame} ${contextFrame} ${volumeFrame} ${rangeFrame}`;
 }
 
 function buildConfidence(coin: Coin, isFallback: boolean): ConfidenceLevel {

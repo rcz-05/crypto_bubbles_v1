@@ -39,7 +39,6 @@ export type ExplanationRequestCoin = Pick<
 
 export type ExplanationRequest = {
   coin: ExplanationRequestCoin;
-  eli5?: boolean;
 };
 
 const MODEL_CHAIN = [

@@ -5,10 +5,12 @@
  */
 
 import { cookies } from "next/headers";
+import { authEnvironmentStatus } from "@/lib/auth/config";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
 import { getUserById, toPublicUser, type PublicUser } from "@/lib/auth/store";
 
 export async function getSessionPayload() {
+  if (!authEnvironmentStatus().ready) return null;
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   return verifySessionToken(token);

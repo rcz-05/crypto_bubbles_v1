@@ -8,6 +8,11 @@
  */
 
 import { createHmac, timingSafeEqual } from "crypto";
+import {
+  AUTH_SECRET_MIN_LENGTH,
+  authSecretConfigured,
+  isProductionRuntime,
+} from "@/lib/auth/config";
 
 export const SESSION_COOKIE = "cc_session";
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days (seconds)
@@ -24,11 +29,16 @@ export type SessionPayload = {
 
 function getSecret(): string {
   const s = process.env.AUTH_SECRET;
-  if (s && s.length >= 16) return s;
+  if (authSecretConfigured() && s) return s;
+  if (isProductionRuntime()) {
+    throw new Error(
+      `AUTH_SECRET must be set to at least ${AUTH_SECRET_MIN_LENGTH} characters in production.`,
+    );
+  }
   if (!warnedAboutSecret) {
     warnedAboutSecret = true;
     console.warn(
-      "[auth] AUTH_SECRET is missing or too short — using an insecure built-in fallback. Set AUTH_SECRET (>=16 chars) in the environment.",
+      `[auth] AUTH_SECRET is missing or too short — using an insecure built-in fallback. Set AUTH_SECRET (>=${AUTH_SECRET_MIN_LENGTH} chars) in the environment.`,
     );
   }
   return DEV_FALLBACK_SECRET;
@@ -57,7 +67,12 @@ export function verifySessionToken(
   const [body, sig] = token.split(".");
   if (!body || !sig) return null;
 
-  const expected = sign(body);
+  let expected: string;
+  try {
+    expected = sign(body);
+  } catch {
+    return null;
+  }
   const a = Buffer.from(sig);
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;

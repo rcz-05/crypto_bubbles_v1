@@ -6,23 +6,23 @@ import type { AdminEvent } from "@/lib/events";
 const STREAM_LIMIT = 50;
 
 const TYPE_ICONS: Record<string, string> = {
-  pro_subscribed: "★",
-  pro_canceled: "✕",
-  pro_checkout_opened: "$",
-  pro_explanation_loaded: "✦",
-  variant_assigned: "▶",
-  variant_overridden: "⇒",
   ai_explanation_failed: "⚠",
-  comprehension_rated: "⌘",
-  trust_rated: "✓",
+  context_failed: "⚠",
+  auth_signed_up: "+",
+  auth_logged_in: "→",
+  auth_logged_out: "←",
+  favorite_added: "★",
+  favorite_removed: "☆",
+  market_refreshed: "↻",
   modal_opened: "▢",
+  source_opened: "↗",
 };
 
 const SPECIAL_TONES: Record<string, string> = {
-  pro_subscribed: "var(--buy)",
-  pro_canceled: "var(--sell)",
-  pro_checkout_opened: "var(--accent)",
   ai_explanation_failed: "var(--sell)",
+  context_failed: "var(--sell)",
+  favorite_added: "var(--buy)",
+  favorite_removed: "var(--sell)",
 };
 
 function formatRelative(iso: string, now: number): string {
@@ -39,15 +39,6 @@ function formatRelative(iso: string, now: number): string {
 
 function payloadPreview(event: AdminEvent): string {
   const p = event.payload ?? {};
-  if (event.type === "pro_subscribed") {
-    const w = (p as { withTrial?: unknown }).withTrial;
-    return w === true ? "trial · $3/mo" : "subscribed · $3/mo";
-  }
-  if (event.type === "pro_explanation_loaded") {
-    const v = (p as { verdict?: unknown }).verdict;
-    const sym = (p as { symbol?: unknown }).symbol;
-    return `${typeof sym === "string" ? sym.toUpperCase() : ""} · ${typeof v === "string" ? v : "—"}`;
-  }
   if (event.type === "ai_explanation_loaded") {
     const sym = (p as { symbol?: unknown }).symbol;
     const t = (p as { time_ms?: unknown }).time_ms;
@@ -58,14 +49,14 @@ function payloadPreview(event: AdminEvent): string {
     const sym = (p as { symbol?: unknown }).symbol;
     return typeof sym === "string" ? sym.toUpperCase() : "";
   }
-  if (event.type === "comprehension_rated") {
-    const v = (p as { value?: unknown }).value;
+  if (event.type === "favorite_added" || event.type === "favorite_removed" || event.type === "favorite_opened") {
     const sym = (p as { symbol?: unknown }).symbol;
-    return `${typeof sym === "string" ? sym.toUpperCase() : ""} · score ${v}`;
+    return typeof sym === "string" ? sym.toUpperCase() : "";
   }
-  if (event.type === "trust_rated") {
-    const v = (p as { value?: unknown }).value;
-    return `★ ${v} / 5`;
+  if (event.type === "market_refreshed") {
+    const source = (p as { source?: unknown }).source;
+    const timeframe = (p as { timeframe?: unknown }).timeframe;
+    return `${typeof source === "string" ? source : "refresh"}${typeof timeframe === "string" ? ` · ${timeframe}` : ""}`;
   }
   // generic compact
   const keys = Object.keys(p);
@@ -113,8 +104,8 @@ export function EventStream({ events }: { events: AdminEvent[] }) {
               fontSize: "0.84rem",
             }}
           >
-            No events to display. Open the main app or restore the baseline
-            from the controls panel.
+            No events to display. Open the main app and interact with the
+            board to populate live telemetry.
           </div>
         ) : (
           stream.map((event, i) => {

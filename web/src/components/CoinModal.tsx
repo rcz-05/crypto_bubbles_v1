@@ -180,7 +180,6 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
           high_24h: coin.high_24h,
           low_24h: coin.low_24h,
         },
-        eli5: true,
       }),
     })
       .then(async (res) => {
@@ -564,7 +563,7 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
         <section className="context-card">
           <div className="context-section-header">
             <div>
-              <p className="section-label">Evidence in this prototype</p>
+              <p className="section-label">Evidence to review</p>
               <h3>Signals to review before acting</h3>
             </div>
           </div>

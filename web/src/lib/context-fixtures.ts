@@ -222,7 +222,7 @@ export const CONTEXT_FIXTURES: Record<string, ContextFixture> = {
         url: "https://cardano.org/",
       },
       {
-        title: "Cardano is useful in this prototype because it shows how some moves are slower to interpret but still actionable.",
+        title: "Cardano is useful because it shows how some moves are slower to interpret but still actionable.",
         source: "CoinCanvas research note",
         publishedAt: "2026-03-14T16:20:00.000Z",
         url: "https://cardano.org/",

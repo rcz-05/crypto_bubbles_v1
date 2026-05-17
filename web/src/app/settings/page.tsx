@@ -200,8 +200,8 @@ export default function SettingsPage() {
             <div>
               <div style={{ fontWeight: 700 }}>Favorites backend</div>
               <div style={{ color: "var(--muted)" }}>
-                Favorites stay local-first for deploy safety, with optional Vercel Postgres
-                syncing when env vars are configured.
+                Guests keep favorites on this device. Signed-in accounts sync favorites
+                through the production account database.
               </div>
             </div>
           </div>
@@ -237,7 +237,7 @@ export default function SettingsPage() {
               <div style={{ fontWeight: 700 }}>Replay onboarding</div>
               <div style={{ color: "var(--muted)" }}>
                 Reset the first-visit guide so it shows again on the next visit to the
-                bubble board. Useful for testing the onboarding flow with new participants.
+                bubble board.
               </div>
             </div>
             <button className="refresh-btn secondary" onClick={() => { resetOnboarding(); window.location.href = "/"; }}>
