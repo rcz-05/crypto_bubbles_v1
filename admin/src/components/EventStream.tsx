@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { AdminEvent, Variant } from "@/lib/events";
-import { getVariant } from "@/lib/events";
+import type { AdminEvent } from "@/lib/events";
 
 const STREAM_LIMIT = 50;
 
@@ -119,7 +118,6 @@ export function EventStream({ events }: { events: AdminEvent[] }) {
           </div>
         ) : (
           stream.map((event, i) => {
-            const v: Variant | null = getVariant(event);
             const id = `${event.recordedAt}:${i}`;
             const expanded = expandedId === id;
             const tone = SPECIAL_TONES[event.type];
@@ -145,7 +143,7 @@ export function EventStream({ events }: { events: AdminEvent[] }) {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "auto auto 1fr auto",
+                    gridTemplateColumns: "auto auto 1fr",
                     gap: 8,
                     alignItems: "center",
                     fontSize: "0.84rem",
@@ -186,23 +184,6 @@ export function EventStream({ events }: { events: AdminEvent[] }) {
                       {payloadPreview(event)}
                     </span>
                   </span>
-                  {v ? (
-                    <span
-                      style={{
-                        padding: "2px 7px",
-                        borderRadius: 999,
-                        fontSize: "0.66rem",
-                        fontWeight: 800,
-                        letterSpacing: "0.06em",
-                        background: v === "a" ? "var(--variant-a-dim)" : "var(--variant-b-dim)",
-                        color: v === "a" ? "var(--variant-a)" : "var(--variant-b)",
-                      }}
-                    >
-                      [{v.toUpperCase()}]
-                    </span>
-                  ) : (
-                    <span style={{ width: 30 }} />
-                  )}
                 </div>
                 {expanded ? (
                   <pre

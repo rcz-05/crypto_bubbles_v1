@@ -1,42 +1,20 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ProCheckoutSheet } from "@/components/ProCheckoutSheet";
-import { VariantBadge } from "@/components/VariantBadge";
 import { loadLocalFavorites } from "@/lib/favorites";
-import {
-  PRO_PRICE_USD,
-  PRO_TRIAL_DAYS,
-  cancelPro,
-  trialDaysRemaining,
-  useProStatus,
-} from "@/lib/pro-status";
 import {
   clearTelemetry,
   exportTelemetryPayload,
   loadTelemetry,
-  trackEvent,
   TelemetryEvent,
 } from "@/lib/telemetry";
-import { useVariant } from "@/lib/variant";
 import { resetOnboarding } from "@/components/OnboardingOverlay";
-
-function formatProSinceDate(value: string | null): string {
-  if (!value) return "today";
-  const dt = new Date(value);
-  if (Number.isNaN(dt.getTime())) return "today";
-  return dt.toLocaleDateString([], { month: "short", day: "numeric" });
-}
 
 export default function SettingsPage() {
   const [events, setEvents] = useState<TelemetryEvent[]>(() => loadTelemetry());
   const [favoriteCount] = useState(() => loadLocalFavorites().length);
   const [downloadState, setDownloadState] = useState<"idle" | "done">("idle");
-  const [proCheckoutOpen, setProCheckoutOpen] = useState(false);
-  const variant = useVariant();
-  const proStatus = useProStatus();
-  const trialDaysLeft = trialDaysRemaining(proStatus.trialEndsAt);
 
   const summary = useMemo(() => {
     const contextLoads = events.filter(
@@ -82,30 +60,6 @@ export default function SettingsPage() {
     setDownloadState("idle");
   };
 
-  const handleProIntent = useCallback(() => {
-    trackEvent({
-      type: "premium_intent_clicked",
-      recordedAt: new Date().toISOString(),
-      payload: {
-        variant,
-        source: "settings",
-      },
-    });
-    trackEvent({
-      type: "pro_checkout_opened",
-      recordedAt: new Date().toISOString(),
-      payload: {
-        variant,
-        source: "settings",
-      },
-    });
-    setProCheckoutOpen(true);
-  }, [variant]);
-
-  const handleProCancel = useCallback(() => {
-    cancelPro("user");
-  }, []);
-
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -113,8 +67,7 @@ export default function SettingsPage() {
           <span className="brand-dot" />
           SETTINGS
         </div>
-        <VariantBadge />
-        <div className="topbar-copy">Sources, instrumentation, and export tools.</div>
+        <div className="topbar-copy">Sources, local data, and app diagnostics.</div>
         <div className="controls">
           <Link href="/" className="nav-link">
             Canvas
@@ -131,11 +84,11 @@ export default function SettingsPage() {
       <main className="page-wrap interior-page">
         <section className="hero-grid compact">
           <div className="hero-panel">
-            <p className="hero-kicker">Testing operations</p>
-            <h1>Export raw interaction data for the project notebook.</h1>
+            <p className="hero-kicker">App data</p>
+            <h1>Manage your local CoinCanvas data.</h1>
             <p className="hero-copy">
-              This page keeps the learning prototype honest: context is deterministic,
-              market data is verified, and every key user action can be exported as raw JSON.
+              Keep tabs on saved coins, local diagnostics, and the verified market
+              data sources used throughout the app.
             </p>
           </div>
           <div className="hero-panel emphasis">
@@ -188,10 +141,10 @@ export default function SettingsPage() {
 
           <div className="list-card">
             <div>
-              <div style={{ fontWeight: 700 }}>Guided context layer</div>
+              <div style={{ fontWeight: 700 }}>Plain-English explanations</div>
               <div style={{ color: "var(--muted)" }}>
-                CoinCanvas uses curated research notes for primary demo coins and falls back
-                to deterministic market-data heuristics for the rest of the board.
+                CoinCanvas explains market moves in beginner-friendly language and falls
+                back to deterministic market-data heuristics when the language model is unavailable.
               </div>
             </div>
           </div>
@@ -206,45 +159,9 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {proStatus.isPro ? (
-            <div className="list-card pro-settings-card">
-              <div>
-                <div style={{ fontWeight: 700 }}>
-                  CoinCanvas Pro · {proStatus.state === "trial" ? "trial active" : "subscribed"}
-                </div>
-                <div style={{ color: "var(--muted)" }}>
-                  {proStatus.state === "trial"
-                    ? `Free trial — ${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} left, then $${PRO_PRICE_USD}/mo. Includes multi-horizon read, peer benchmark, volatility profile, and curated trust-tagged sources.`
-                    : `Active since ${formatProSinceDate(proStatus.since)} at $${PRO_PRICE_USD}/mo. Includes multi-horizon read, peer benchmark, volatility profile, and curated trust-tagged sources.`}
-                </div>
-              </div>
-              <button
-                className="refresh-btn secondary"
-                type="button"
-                onClick={handleProCancel}
-              >
-                Cancel subscription
-              </button>
-            </div>
-          ) : (
-            <div className="list-card pro-settings-card">
-              <div>
-                <div style={{ fontWeight: 700 }}>CoinCanvas Pro</div>
-                <div style={{ color: "var(--muted)" }}>
-                  ${PRO_PRICE_USD}/mo after a {PRO_TRIAL_DAYS}-day free trial.
-                  Multi-horizon analyst read, peer-cohort benchmark, volatility
-                  profile, and curated trust-tagged sources for serious novices.
-                </div>
-              </div>
-              <button className="refresh-btn" type="button" onClick={handleProIntent}>
-                Start {PRO_TRIAL_DAYS}-day free trial
-              </button>
-            </div>
-          )}
-
           <div className="list-card">
             <div>
-              <div style={{ fontWeight: 700 }}>Export raw data</div>
+              <div style={{ fontWeight: 700 }}>Export local diagnostics</div>
               <div style={{ color: "var(--muted)" }}>
                 Download `coincanvas-telemetry.json` with modal opens, context load
                 timing, fallback usage, source clicks, timeframe changes, session IDs,
@@ -258,10 +175,9 @@ export default function SettingsPage() {
 
           <div className="list-card">
             <div>
-              <div style={{ fontWeight: 700 }}>Reset local evidence</div>
+              <div style={{ fontWeight: 700 }}>Clear local diagnostics</div>
               <div style={{ color: "var(--muted)" }}>
-                Clear the current interaction dataset before the next moderated
-                testing session.
+                Clear the current interaction dataset from this browser.
               </div>
             </div>
             <button className="refresh-btn secondary" onClick={handleClear}>
@@ -301,13 +217,6 @@ export default function SettingsPage() {
           </div>
         </div>
       </main>
-
-      <ProCheckoutSheet
-        open={proCheckoutOpen}
-        variant={variant}
-        source="settings"
-        onClose={() => setProCheckoutOpen(false)}
-      />
     </div>
   );
 }

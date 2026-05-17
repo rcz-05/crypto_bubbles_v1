@@ -4,10 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminControls } from "@/components/AdminControls";
 import { EventStream } from "@/components/EventStream";
 import {
-  AbTestPanel,
   ActivityPanel,
   PerformancePanel,
-  ProFunnelPanel,
 } from "@/components/Panels";
 import type { DashboardStats } from "@/lib/aggregate";
 import type { AdminEvent } from "@/lib/events";
@@ -83,8 +81,6 @@ export function Dashboard() {
 
       <div className="dash-grid">
         <ActivityPanel stats={stats?.activity} />
-        <AbTestPanel stats={stats?.abTest} />
-        <ProFunnelPanel stats={stats?.proFunnel} />
         <PerformancePanel stats={stats?.performance} />
         <EventStream events={events} />
         <AdminControls onAfterMutation={refresh} />

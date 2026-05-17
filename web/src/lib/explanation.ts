@@ -173,34 +173,21 @@ export function deterministicFallback(
   };
 }
 
-function buildSystemInstruction(eli5: boolean): string {
+function buildSystemInstruction(): string {
   const base = [
     "You explain why a specific coin has moved today using only the numeric data provided.",
     "Never invent news, regulatory events, partnerships, or catalysts you were not given.",
     "Never give financial advice or price predictions.",
     "Never mention being an AI, LLM, or model.",
     "Output must strictly match the JSON schema you are given.",
+    "Audience: someone who is curious about crypto but does not want trading-desk jargon.",
+    "Avoid jargon. Banned words include: market capitalization, liquidity, turnover, momentum, accumulation, distribution, capitulation, float, mean reversion, sell-side, buy-side.",
+    "If you use unavoidable terms like price, volume, rank, or range, explain them in everyday words.",
+    "When you reference a percentage, translate it to a concrete example like 'for every $100 someone had, they'd have $96.80 now'.",
+    "Use everyday verbs only: 'went up', 'went down', 'stayed about the same', 'bounced around', 'a lot of people are trading it'.",
+    "Keep every sentence short — under 14 words each.",
+    "Tone: warm, patient, and useful to someone checking the market on a phone.",
   ];
-  if (eli5) {
-    base.push(
-      "Audience: someone who has never traded crypto and may not know what 'market cap' or 'volume' even mean.",
-      "Avoid ALL crypto and trading jargon. Banned words include: market cap, market capitalization, volume, volatility, rank, intraday, range, drawdown, drawup, support, resistance, liquidity, turnover, momentum, accumulation, distribution, capitulation, float, mean reversion, sell-side, buy-side.",
-      "When you reference a percentage, translate it to a concrete example like 'for every $100 someone had, they'd have $96.80 now'.",
-      "Use everyday verbs only: 'went up', 'went down', 'stayed about the same', 'bounced around', 'a lot of people are trading it'.",
-      "Keep every sentence short — under 14 words each.",
-      "When useful, compare to something familiar (a grocery item's price changing, a stock the reader might have heard of).",
-      "Tone: warm, patient, like explaining to a friend who is curious but new.",
-    );
-  } else {
-    base.push(
-      "Audience: an experienced crypto trader who reads market microstructure fluently and wants signal density, not hand-holding.",
-      "Use precise trading desk vocabulary where it actually fits the data: drawdown / drawup, intraday range, realized volatility, turnover ratio (volume/market-cap), session high / low / float, support and resistance levels, sell-tape vs accumulation flow, thin liquidity, momentum, capitulation, distribution, mean reversion, large-cap vs small-cap rank cohort, basis vs spot.",
-      "Pack interpretive density: across the summary and watchNotes combined, reference at least three distinct metrics with their interpretive meaning — not just the numbers, but what they imply about positioning and tape character.",
-      "Cite specific price levels and percentages from the data with appropriate precision; do not round to one decimal when the data has two.",
-      "Voice: terse, analytical, sell-side desk note. No hedging, no fluff, no exclamation marks.",
-      "It is fine — encouraged — to land on an interpretive read (e.g. 'passive distribution rather than capitulation', 'compression ahead of a higher-timeframe inflection') as long as it is grounded only in the numbers shown.",
-    );
-  }
   return base.join(" ");
 }
 
@@ -340,7 +327,7 @@ async function callGemini(
 export async function generateCoinExplanation(
   req: ExplanationRequest,
 ): Promise<CoinExplanation> {
-  const systemInstruction = buildSystemInstruction(Boolean(req.eli5));
+  const systemInstruction = buildSystemInstruction();
   const prompt = buildPrompt(req);
 
   for (const model of MODEL_CHAIN) {
@@ -362,6 +349,6 @@ export function buildExplanationCacheKey(req: ExplanationRequest): string {
     bucketize(c.price_change_percentage_24h),
     bucketize(c.price_change_percentage_1h_in_currency),
     bucketize(getIntradayRangePercent(c) ?? null, 1),
-    req.eli5 ? "eli5" : "std",
+    "plain",
   ].join(":");
 }

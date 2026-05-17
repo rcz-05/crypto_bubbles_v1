@@ -1,11 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-
-type Flags = {
-  forceVariant: "a" | "b" | null;
-  proOverride: boolean;
-};
+import { useCallback, useState } from "react";
 
 type Toast = { kind: "ok" | "err"; message: string } | null;
 
@@ -14,70 +9,8 @@ export function AdminControls({
 }: {
   onAfterMutation: () => void | Promise<void>;
 }) {
-  const [flags, setFlags] = useState<Flags>({
-    forceVariant: null,
-    proOverride: false,
-  });
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast>(null);
-
-  const refreshFlags = useCallback(async () => {
-    try {
-      const res = await fetch("/api/flags", { cache: "no-store" });
-      if (res.ok) {
-        setFlags((await res.json()) as Flags);
-      }
-    } catch {
-      // noop
-    }
-  }, []);
-
-  useEffect(() => {
-    // External-data fetch on mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void refreshFlags();
-  }, [refreshFlags]);
-
-  const setFlagsRemote = useCallback(
-    async (patch: { forceVariant?: "a" | "b" | "clear" | null; proOverride?: boolean }) => {
-      setBusy("flags");
-      try {
-        const res = await fetch("/api/flags", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(patch),
-        });
-        if (res.ok) {
-          setFlags((await res.json()) as Flags);
-          setToast({ kind: "ok", message: "Flag updated" });
-        } else {
-          setToast({ kind: "err", message: "Flag update failed" });
-        }
-      } finally {
-        setBusy(null);
-      }
-    },
-    [],
-  );
-
-  const seed = useCallback(async () => {
-    if (!window.confirm("Restore the 4-day activity baseline? This will replace the current event data with the saved baseline snapshot.")) {
-      return;
-    }
-    setBusy("seed");
-    try {
-      const res = await fetch("/api/seed", { method: "POST" });
-      const data = (await res.json()) as { ok?: boolean; seeded?: number };
-      if (res.ok && data.ok) {
-        setToast({ kind: "ok", message: `Baseline restored · ${data.seeded ?? 0} events` });
-        await onAfterMutation();
-      } else {
-        setToast({ kind: "err", message: "Restore failed" });
-      }
-    } finally {
-      setBusy(null);
-    }
-  }, [onAfterMutation]);
 
   const clearEvents = useCallback(async () => {
     if (!window.confirm("Permanently clear ALL telemetry events from Redis?")) return;
@@ -98,8 +31,8 @@ export function AdminControls({
   return (
     <section className="panel span-7">
       <div className="panel-head">
-        <h2 className="panel-title">Controls · feature flags + dataset</h2>
-        <span className="panel-meta">writes shared Redis flags</span>
+        <h2 className="panel-title">Controls · operations</h2>
+        <span className="panel-meta">telemetry maintenance</span>
       </div>
 
       <div
@@ -110,59 +43,26 @@ export function AdminControls({
         }}
       >
         <ControlBlock
-          title="Force next session variant"
-          description="Overrides hash-bucketing on the main app's next session start. Useful for back-to-back A/B demos."
+          title="Production mode"
+          description="Plain-English explanations are the only active user-facing mode. A/B and Pro demo overrides have been removed."
         >
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <ToggleBtn
-              label="A · Standard"
-              tone="variant-a"
-              active={flags.forceVariant === "a"}
-              disabled={busy === "flags"}
-              onClick={() => setFlagsRemote({ forceVariant: "a" })}
-            />
-            <ToggleBtn
-              label="B · ELI5"
-              tone="variant-b"
-              active={flags.forceVariant === "b"}
-              disabled={busy === "flags"}
-              onClick={() => setFlagsRemote({ forceVariant: "b" })}
-            />
-            <ToggleBtn
-              label="Clear"
-              tone="muted"
-              active={flags.forceVariant === null}
-              disabled={busy === "flags"}
-              onClick={() => setFlagsRemote({ forceVariant: "clear" })}
-            />
-          </div>
-        </ControlBlock>
-
-        <ControlBlock
-          title="Pro override flag"
-          description="Grants every visiting session full Pro access until cleared. Fast-path for showing the unlocked Pro card without going through checkout."
-        >
-          <ToggleBtn
-            label={flags.proOverride ? "Pro: ENABLED for all" : "Pro: off (normal)"}
-            tone={flags.proOverride ? "buy" : "muted"}
-            active={flags.proOverride}
-            disabled={busy === "flags"}
-            onClick={() => setFlagsRemote({ proOverride: !flags.proOverride })}
-          />
-        </ControlBlock>
-
-        <ControlBlock
-          title="Restore baseline dataset"
-          description="Reload the 4-day activity baseline that powers the panels on first open. Useful if telemetry is cleared mid-demo or you want a clean reset before recording."
-        >
-          <button
-            type="button"
-            className="control-btn primary"
-            onClick={seed}
-            disabled={busy != null}
+          <span
+            style={{
+              display: "inline-flex",
+              width: "fit-content",
+              padding: "7px 12px",
+              borderRadius: 999,
+              border: "1px solid var(--border)",
+              background: "var(--surface)",
+              color: "var(--text-secondary)",
+              fontSize: "0.78rem",
+              fontWeight: 700,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+            }}
           >
-            {busy === "seed" ? "Restoring…" : "Restore 4-day baseline"}
-          </button>
+            Standard app mode
+          </span>
         </ControlBlock>
 
         <ControlBlock
@@ -278,60 +178,5 @@ function ControlBlock({
       </div>
       {children}
     </div>
-  );
-}
-
-function ToggleBtn({
-  label,
-  tone,
-  active,
-  disabled,
-  onClick,
-}: {
-  label: string;
-  tone: "variant-a" | "variant-b" | "buy" | "muted";
-  active: boolean;
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  const colorVar =
-    tone === "variant-a"
-      ? "var(--variant-a)"
-      : tone === "variant-b"
-        ? "var(--variant-b)"
-        : tone === "buy"
-          ? "var(--buy)"
-          : "var(--muted)";
-  const dimVar =
-    tone === "variant-a"
-      ? "var(--variant-a-dim)"
-      : tone === "variant-b"
-        ? "var(--variant-b-dim)"
-        : tone === "buy"
-          ? "var(--buy-dim)"
-          : "var(--surface)";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        appearance: "none",
-        padding: "7px 12px",
-        borderRadius: 999,
-        border: `1px solid ${active ? colorVar : "var(--border)"}`,
-        background: active ? dimVar : "transparent",
-        color: active ? colorVar : "var(--text-secondary)",
-        fontFamily: "inherit",
-        fontSize: "0.78rem",
-        fontWeight: 700,
-        letterSpacing: "0.04em",
-        textTransform: "uppercase",
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.5 : 1,
-      }}
-    >
-      {label}
-    </button>
   );
 }

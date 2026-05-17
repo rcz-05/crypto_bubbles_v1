@@ -4,20 +4,16 @@
  * Three cache buckets:
  *   coincanvas-shell-v1   — cache-first for HTML/JS/CSS/fonts/icons
  *   coincanvas-market-v1  — network-first w/ cache fallback for /api/market
- *   coincanvas-ai-v1      — stale-while-revalidate for /api/explanation
- *                           and /api/pro-explanation
  *
  * Endpoints intentionally NOT cached:
  *   /api/telemetry-ingest   — must always reach the server
- *   /api/admin-flags        — short server cache already exists
- *   /api/coin-detail        — per-coin, lower priority
  *   /api/context            — per-coin
+ *   /api/explanation        — POST-only; needs an explicit client cache
  */
 
 const SHELL_CACHE = "coincanvas-shell-v1";
 const MARKET_CACHE = "coincanvas-market-v1";
-const AI_CACHE = "coincanvas-ai-v1";
-const ALL_CACHES = [SHELL_CACHE, MARKET_CACHE, AI_CACHE];
+const ALL_CACHES = [SHELL_CACHE, MARKET_CACHE];
 
 const MARKET_FALLBACK_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -55,23 +51,14 @@ self.addEventListener("fetch", (event) => {
   // Skip the analytics / admin / per-coin endpoints we don't want to cache.
   if (
     url.pathname.startsWith("/api/telemetry-ingest") ||
-    url.pathname.startsWith("/api/admin-flags") ||
     url.pathname.startsWith("/api/context") ||
-    url.pathname.startsWith("/api/coin-detail")
+    url.pathname.startsWith("/api/explanation")
   ) {
     return;
   }
 
   if (url.pathname === "/api/market") {
     event.respondWith(handleMarket(req));
-    return;
-  }
-
-  if (
-    url.pathname === "/api/explanation" ||
-    url.pathname === "/api/pro-explanation"
-  ) {
-    // POST-only routes; the GET filter above means we never hit this branch.
     return;
   }
 

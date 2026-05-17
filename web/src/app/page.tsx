@@ -5,7 +5,6 @@ import Link from "next/link";
 import { BubbleChart } from "@/components/BubbleChart";
 import { BubblePager } from "@/components/BubblePager";
 import { CoinModal } from "@/components/CoinModal";
-import { VariantBadge } from "@/components/VariantBadge";
 import { useMarketStore } from "@/store/market";
 import { useFavoritesStore } from "@/store/favorites";
 import { useBubblePagination } from "@/hooks/useBubblePagination";
@@ -13,9 +12,7 @@ import { useMeasure } from "@/hooks/useMeasure";
 import { Coin, TimeFrame, getChangeForTimeFrame } from "@/lib/coingecko";
 import { HeaderTabs } from "@/components/HeaderTabs";
 import { OnboardingOverlay } from "@/components/OnboardingOverlay";
-import { PostModalSurvey, type SurveyRequest } from "@/components/PostModalSurvey";
 import { trackEvent } from "@/lib/telemetry";
-import { useVariant } from "@/lib/variant";
 
 const TIME_FRAME_OPTIONS: { label: string; value: TimeFrame }[] = [
   { label: "1H", value: "1h" },
@@ -37,10 +34,7 @@ export default function HomePage() {
   const { favorites, load, add, remove, isFavorite } = useFavoritesStore();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Coin | null>(null);
-  const [modalOpenedAt, setModalOpenedAt] = useState<number | null>(null);
-  const [surveyRequest, setSurveyRequest] = useState<SurveyRequest | null>(null);
   const deferredSearch = useDeferredValue(search);
-  const variant = useVariant();
 
   const { ref, width, height } = useMeasure<HTMLDivElement>();
   const drawWidth = width || 800;
@@ -85,7 +79,6 @@ export default function HomePage() {
 
   const handleSelect = useCallback((coin: Coin) => {
     setSelected(coin);
-    setModalOpenedAt(Date.now());
     trackEvent({
       type: "modal_opened",
       recordedAt: new Date().toISOString(),
@@ -94,24 +87,21 @@ export default function HomePage() {
   }, []);
 
   const handleCloseModal = useCallback(() => {
-    if (selected && modalOpenedAt && Date.now() - modalOpenedAt >= 5_000) {
-      setSurveyRequest({
-        id: `${selected.id}-${Date.now()}`,
-        symbol: selected.symbol,
-        variant,
-      });
-    }
     setSelected(null);
-    setModalOpenedAt(null);
-  }, [modalOpenedAt, selected, variant]);
+  }, []);
 
   const [refreshNonce, setRefreshNonce] = useState(0);
 
   const handleRefresh = useCallback(() => {
     setSlideDir("fade");
     setRefreshNonce((n) => n + 1);
+    trackEvent({
+      type: "market_refreshed",
+      recordedAt: new Date().toISOString(),
+      payload: { source: "manual", timeframe: timeFrame },
+    });
     void fetchCoins();
-  }, [fetchCoins]);
+  }, [fetchCoins, timeFrame]);
 
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
@@ -171,7 +161,6 @@ export default function HomePage() {
           <span className="brand-dot" />
           CoinCanvas
         </Link>
-        <VariantBadge />
 
         <div className="controls compact">
           <Link href="/favorites" className="nav-link">
@@ -358,11 +347,6 @@ export default function HomePage() {
         onClose={handleCloseModal}
         onToggleFavorite={toggleFavorite}
         isFavorite={isFavorite}
-      />
-
-      <PostModalSurvey
-        request={surveyRequest}
-        onDone={() => setSurveyRequest(null)}
       />
 
       <OnboardingOverlay />

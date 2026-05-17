@@ -2,18 +2,6 @@
 
 export type TelemetryEvent =
   | {
-      type: "variant_assigned";
-      recordedAt: string;
-      sessionId: string;
-      payload: { variant: "a" | "b"; source: "hash" | "stored" };
-    }
-  | {
-      type: "variant_overridden";
-      recordedAt: string;
-      sessionId: string;
-      payload: { variant: "a" | "b"; previousVariant: "a" | "b" | null };
-    }
-  | {
       type: "modal_opened";
       recordedAt: string;
       sessionId: string;
@@ -56,6 +44,12 @@ export type TelemetryEvent =
       payload: { from: string; to: string };
     }
   | {
+      type: "market_refreshed";
+      recordedAt: string;
+      sessionId: string;
+      payload: { source: "manual" | "keyboard" | "startup"; timeframe?: string };
+    }
+  | {
       type: "onboarding_completed";
       recordedAt: string;
       sessionId: string;
@@ -71,8 +65,6 @@ export type TelemetryEvent =
         is_fallback: boolean;
         tier: string;
         time_ms: number;
-        eli5: boolean;
-        variant?: "a" | "b";
       };
     }
   | {
@@ -82,122 +74,10 @@ export type TelemetryEvent =
       payload: { symbol: string; reason: string };
     }
   | {
-      type: "eli5_toggled";
-      recordedAt: string;
-      sessionId: string;
-      payload: { symbol: string; value: boolean };
-    }
-  | {
       type: "favorite_opened";
       recordedAt: string;
       sessionId: string;
       payload: { symbol: string; source: "favorites_page" | "bubble_board" };
-    }
-  | {
-      type: "survey_shown";
-      recordedAt: string;
-      sessionId: string;
-      payload: { variant: "a" | "b"; symbol: string };
-    }
-  | {
-      type: "survey_dismissed";
-      recordedAt: string;
-      sessionId: string;
-      payload: {
-        variant: "a" | "b";
-        symbol: string;
-        reason: "skip" | "timeout";
-      };
-    }
-  | {
-      type: "comprehension_rated";
-      recordedAt: string;
-      sessionId: string;
-      payload: { variant: "a" | "b"; symbol: string; value: 0 | 1 | 2 };
-    }
-  | {
-      type: "trust_rated";
-      recordedAt: string;
-      sessionId: string;
-      payload: { variant: "a" | "b"; symbol: string; value: 1 | 2 | 3 | 4 | 5 };
-    }
-  | {
-      type: "premium_intent_clicked";
-      recordedAt: string;
-      sessionId: string;
-      payload: {
-        variant: "a" | "b";
-        source: "coin_modal" | "settings";
-        symbol?: string;
-      };
-    }
-  | {
-      type: "premium_waitlist_submitted";
-      recordedAt: string;
-      sessionId: string;
-      payload: {
-        variant: "a" | "b";
-        source: "coin_modal" | "settings";
-        providedEmail: boolean;
-        symbol?: string;
-        email?: string;
-      };
-    }
-  | {
-      type: "pro_checkout_opened";
-      recordedAt: string;
-      sessionId: string;
-      payload: {
-        variant: "a" | "b";
-        source: "coin_modal" | "settings";
-        symbol?: string;
-      };
-    }
-  | {
-      type: "pro_checkout_canceled";
-      recordedAt: string;
-      sessionId: string;
-      payload: {
-        variant: "a" | "b";
-        source: "coin_modal" | "settings";
-        symbol?: string;
-      };
-    }
-  | {
-      type: "pro_subscribed";
-      recordedAt: string;
-      sessionId: string;
-      payload: {
-        withTrial: boolean;
-        priceUsd: number;
-      };
-    }
-  | {
-      type: "pro_canceled";
-      recordedAt: string;
-      sessionId: string;
-      payload: {
-        reason: "user" | "override";
-        since: string | null;
-      };
-    }
-  | {
-      type: "pro_explanation_loaded";
-      recordedAt: string;
-      sessionId: string;
-      payload: {
-        symbol: string;
-        model: string;
-        is_fallback: boolean;
-        time_ms: number;
-        verdict?: "BUY" | "HODL" | "SELL";
-      };
-    }
-  | {
-      type: "pro_explanation_failed";
-      recordedAt: string;
-      sessionId: string;
-      payload: { symbol: string; reason: string };
     }
   | {
       type: "bubble_page_changed";

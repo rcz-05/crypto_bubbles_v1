@@ -4,13 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { CoinModal } from "@/components/CoinModal";
-import { PostModalSurvey, type SurveyRequest } from "@/components/PostModalSurvey";
-import { VariantBadge } from "@/components/VariantBadge";
 import type { Coin } from "@/lib/coingecko";
 import { useFavoritesStore } from "@/store/favorites";
 import { useMarketStore } from "@/store/market";
 import { trackEvent } from "@/lib/telemetry";
-import { useVariant } from "@/lib/variant";
 
 type SortKey = "added" | "gainer" | "loser" | "alpha";
 
@@ -57,9 +54,6 @@ export default function FavoritesPage() {
   const { coins, fetchCoins } = useMarketStore();
   const [sort, setSort] = useState<SortKey>("added");
   const [selected, setSelected] = useState<Coin | null>(null);
-  const [modalOpenedAt, setModalOpenedAt] = useState<number | null>(null);
-  const [surveyRequest, setSurveyRequest] = useState<SurveyRequest | null>(null);
-  const variant = useVariant();
 
   useEffect(() => {
     load();
@@ -131,7 +125,6 @@ export default function FavoritesPage() {
   const handleOpen = useCallback((item: EnrichedFavorite) => {
     if (!item.coin) return;
     setSelected(item.coin);
-    setModalOpenedAt(Date.now());
     trackEvent({
       type: "favorite_opened",
       recordedAt: new Date().toISOString(),
@@ -140,15 +133,7 @@ export default function FavoritesPage() {
   }, []);
 
   const handleCloseModal = () => {
-    if (selected && modalOpenedAt && Date.now() - modalOpenedAt >= 5_000) {
-      setSurveyRequest({
-        id: `${selected.id}-${Date.now()}`,
-        symbol: selected.symbol,
-        variant,
-      });
-    }
     setSelected(null);
-    setModalOpenedAt(null);
   };
 
   const handleRemove = (e: React.MouseEvent, symbol: string) => {
@@ -163,7 +148,6 @@ export default function FavoritesPage() {
           <span className="brand-dot" />
           CoinCanvas
         </div>
-        <VariantBadge />
         <div className="topbar-copy">
           Your saved coins, with live data and the same AI interpretation a tap away.
         </div>
@@ -379,11 +363,6 @@ export default function FavoritesPage() {
           }
         }}
         isFavorite={isFavorite}
-      />
-
-      <PostModalSurvey
-        request={surveyRequest}
-        onDone={() => setSurveyRequest(null)}
       />
     </div>
   );

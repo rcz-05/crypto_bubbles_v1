@@ -2,14 +2,10 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ProCheckoutSheet } from "@/components/ProCheckoutSheet";
-import { ProInsightsCard } from "@/components/ProInsightsCard";
 import { CoinContext } from "@/lib/coin-context";
 import { Coin } from "@/lib/coingecko";
 import type { CoinExplanation, ExplanationTier } from "@/lib/explanation";
-import { PRO_PRICE_USD, PRO_TRIAL_DAYS, useProStatus } from "@/lib/pro-status";
 import { trackEvent } from "@/lib/telemetry";
-import { useVariant } from "@/lib/variant";
 
 type Props = {
   coin: Coin | null;
@@ -58,14 +54,9 @@ function formatRelativeDate(value: string) {
 }
 
 export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props) {
-  const variant = useVariant();
-  const eli5 = variant === "b";
-  const proStatus = useProStatus();
-  const [proCheckoutOpen, setProCheckoutOpen] = useState(false);
-
   const cacheKey = coin ? `${coin.id}:${coin.symbol}` : null;
   const explanationKey = coin
-    ? `${coin.id}:${coin.symbol}:${Math.round((coin.price_change_percentage_24h ?? 0) * 2) / 2}:${eli5 ? "eli5" : "std"}`
+    ? `${coin.id}:${coin.symbol}:${Math.round((coin.price_change_percentage_24h ?? 0) * 2) / 2}:plain`
     : null;
   const initialContext = cacheKey ? contextCache.get(cacheKey) ?? null : null;
   const initialExplanation = explanationKey
@@ -189,7 +180,7 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
           high_24h: coin.high_24h,
           low_24h: coin.low_24h,
         },
-        eli5,
+        eli5: true,
       }),
     })
       .then(async (res) => {
@@ -209,8 +200,6 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
             is_fallback: payload.isFallback,
             tier: payload.tier,
             time_ms: Math.round(performance.now() - startedAt),
-            eli5,
-            variant,
           },
         });
       })
@@ -226,7 +215,7 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
       });
 
     return () => controller.abort();
-  }, [coin, explanationKey, eli5, variant]);
+  }, [coin, explanationKey]);
 
   // Animated dismiss: slide-down then unmount.
   const [closing, setClosing] = useState(false);
@@ -247,29 +236,6 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
   }, [closing, onClose]);
 
   const stableClose = requestClose;
-
-  const handleProIntent = useCallback(() => {
-    if (!coin) return;
-    trackEvent({
-      type: "premium_intent_clicked",
-      recordedAt: new Date().toISOString(),
-      payload: {
-        variant,
-        symbol: coin.symbol,
-        source: "coin_modal",
-      },
-    });
-    trackEvent({
-      type: "pro_checkout_opened",
-      recordedAt: new Date().toISOString(),
-      payload: {
-        variant,
-        symbol: coin.symbol,
-        source: "coin_modal",
-      },
-    });
-    setProCheckoutOpen(true);
-  }, [coin, variant]);
 
   useEffect(() => {
     if (!coin) return;
@@ -415,13 +381,11 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
           </div>
         </div>
 
-        <section
-          className={`context-card ai-interp-card${eli5 ? " eli5-active" : ""}`}
-        >
+        <section className="context-card ai-interp-card plain-active">
           <div className="context-section-header">
             <div>
-              <p className="section-label">AI interpretation</p>
-              <h3>Plain-English read on the move</h3>
+              <p className="section-label">Plain-English read</p>
+              <h3>What the move means</h3>
             </div>
             {explanation ? (
               <span className={`tier-chip ${TIER_TONE[explanation.tier]}`}>
@@ -490,63 +454,6 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
             </div>
           ) : null}
         </section>
-
-        {proStatus.isPro ? (
-          <ProInsightsCard coin={coin} />
-        ) : (
-          <section
-            className="context-card pro-lock-card"
-            aria-labelledby="pro-lock-title"
-          >
-            <div className="pro-lock-copy">
-              <p className="section-label">Pro insights</p>
-              <h3 id="pro-lock-title">
-                Multi-horizon read + peer benchmark
-              </h3>
-              <p>
-                Pro adds an analyst-style 1h/24h/7d/30d synthesis, a peer-cohort
-                comparison against similar market-cap coins, and a volatility
-                profile. Built for users who want signal density, not
-                hand-holding.
-              </p>
-            </div>
-
-            <div className="pro-preview-wrap" aria-hidden>
-              <div className="pro-preview-blur">
-                <div className="pro-preview-row">
-                  <span>Multi-horizon narrative</span>
-                  <strong>
-                    24h move sits inside a constructive 7d trend; 30d still
-                    consolidating
-                  </strong>
-                </div>
-                <div className="pro-preview-row">
-                  <span>Peer benchmark</span>
-                  <strong>
-                    Outperforming top-10 large-cap cohort by +0.42 pts on the
-                    session
-                  </strong>
-                </div>
-                <div className="pro-preview-row">
-                  <span>Volatility profile</span>
-                  <strong>Above-average chop vs cohort (4.2% vs 2.8%)</strong>
-                </div>
-              </div>
-              <div className="pro-preview-overlay">
-                <span className="pro-price-pill">
-                  ${PRO_PRICE_USD}/mo · {PRO_TRIAL_DAYS}-day free trial
-                </span>
-                <button
-                  className="refresh-btn"
-                  type="button"
-                  onClick={handleProIntent}
-                >
-                  Start {PRO_TRIAL_DAYS}-day free trial
-                </button>
-              </div>
-            </div>
-          </section>
-        )}
 
         <div className="context-grid">
           <section className="context-card accent">
@@ -727,13 +634,6 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
         </div>
       </div>
 
-      <ProCheckoutSheet
-        open={proCheckoutOpen}
-        variant={variant}
-        source="coin_modal"
-        symbol={coin.symbol}
-        onClose={() => setProCheckoutOpen(false)}
-      />
     </div>
   );
 }

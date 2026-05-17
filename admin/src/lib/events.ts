@@ -1,5 +1,3 @@
-export type Variant = "a" | "b";
-
 /** Wire format mirrors web/src/lib/telemetry.ts's TelemetryEvent. */
 export type AdminEvent = {
   type: string;
@@ -27,11 +25,6 @@ export function parseEvents(raw: string[]): AdminEvent[] {
     }
   }
   return events;
-}
-
-export function getVariant(event: AdminEvent): Variant | null {
-  const v = (event.payload as { variant?: string } | undefined)?.variant;
-  return v === "a" || v === "b" ? v : null;
 }
 
 export function getSymbol(event: AdminEvent): string | null {
