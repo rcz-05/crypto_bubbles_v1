@@ -1,5 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "mkdir -p public && echo '<meta http-equiv=\"refresh\" content=\"0;url=https://burbujitascripto.vercel.app\">' > public/index.html",
-  "outputDirectory": "public"
-}
