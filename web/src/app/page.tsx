@@ -171,7 +171,7 @@ export default function HomePage() {
           </Link>
 
           <button className="refresh-btn secondary" onClick={handleRefresh}>
-            Refresh (R)
+            Refresh <span className="kbd-hint">(R)</span>
           </button>
         </div>
       </header>
