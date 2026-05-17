@@ -1,16 +1,21 @@
 /**
  * Auth + per-user favorites persistence.
  *
- * Uses Vercel Postgres when POSTGRES_* env vars are present, and falls back
- * to an in-memory store otherwise (mirrors the pattern in
- * src/app/api/favorites/route.ts so the app runs locally without a DB).
+ * Persists in the project's Upstash KV/Redis (same store used for telemetry)
+ * when KV REST credentials are present, and falls back to an in-memory store
+ * otherwise so the app still runs without KV.
+ *
+ * KV key layout:
+ *   auth:email:<normalizedEmail>  -> userId          (also the uniqueness lock)
+ *   auth:user:<userId>            -> JSON UserRecord
+ *   auth:favs:<userId>            -> JSON FavoriteCoin[]
  *
  * Server-only: never import from a "use client" file.
  */
 
 import { randomUUID } from "crypto";
-import { sql } from "@vercel/postgres";
-import { postgresConfigured } from "@/lib/auth/config";
+import { kvConfigured } from "@/lib/auth/config";
+import { del, get, set, setnx } from "@/lib/kv";
 import type { FavoriteCoin } from "@/lib/favorites";
 
 export type UserRecord = {
@@ -28,15 +33,16 @@ export type PublicUser = {
   createdAt: string;
 };
 
-export const hasDb =
-  postgresConfigured();
+const usingKv = kvConfigured();
+
+const emailKey = (email: string) => `auth:email:${email}`;
+const userKey = (id: string) => `auth:user:${id}`;
+const favsKey = (id: string) => `auth:favs:${id}`;
 
 // ---- In-memory fallback (per server process) -------------------------------
 const memUsersById = new Map<string, UserRecord>();
 const memUsersByEmail = new Map<string, UserRecord>();
 const memFavorites = new Map<string, Map<string, FavoriteCoin>>();
-
-let tablesReady = false;
 
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -51,44 +57,25 @@ export function toPublicUser(u: UserRecord): PublicUser {
   };
 }
 
-async function ensureTables(): Promise<void> {
-  if (!hasDb || tablesReady) return;
-  await sql`CREATE TABLE IF NOT EXISTS users (
-    id text PRIMARY KEY,
-    email text UNIQUE NOT NULL,
-    password_hash text NOT NULL,
-    display_name text,
-    created_at timestamptz NOT NULL DEFAULT now()
-  );`;
-  await sql`CREATE TABLE IF NOT EXISTS user_favorites (
-    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    symbol text NOT NULL,
-    name text NOT NULL,
-    added_at timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (user_id, symbol)
-  );`;
-  tablesReady = true;
+function parseUser(raw: string | null): UserRecord | null {
+  if (!raw) return null;
+  try {
+    const u = JSON.parse(raw) as UserRecord;
+    if (typeof u?.id === "string" && typeof u?.email === "string") return u;
+    return null;
+  } catch {
+    return null;
+  }
 }
 
-type UserRow = {
-  id: string;
-  email: string;
-  password_hash: string;
-  display_name: string | null;
-  created_at: string;
-};
-
-function rowToUser(r: UserRow): UserRecord {
-  return {
-    id: r.id,
-    email: r.email,
-    passwordHash: r.password_hash,
-    displayName: r.display_name,
-    createdAt:
-      typeof r.created_at === "string"
-        ? r.created_at
-        : new Date(r.created_at).toISOString(),
-  };
+function parseFavorites(raw: string | null): FavoriteCoin[] {
+  if (!raw) return [];
+  try {
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? (list as FavoriteCoin[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 /** Create a user. Returns null if the email is already registered. */
@@ -99,51 +86,50 @@ export async function createUser(params: {
 }): Promise<UserRecord | null> {
   const email = normalizeEmail(params.email);
   const id = randomUUID();
-  const displayName = params.displayName?.trim() || null;
-  const createdAt = new Date().toISOString();
+  const record: UserRecord = {
+    id,
+    email,
+    passwordHash: params.passwordHash,
+    displayName: params.displayName?.trim() || null,
+    createdAt: new Date().toISOString(),
+  };
 
-  if (hasDb) {
+  if (usingKv) {
     try {
-      await ensureTables();
-      const { rows } = await sql<UserRow>`
-        INSERT INTO users (id, email, password_hash, display_name, created_at)
-        VALUES (${id}, ${email}, ${params.passwordHash}, ${displayName}, ${createdAt})
-        ON CONFLICT (email) DO NOTHING
-        RETURNING id, email, password_hash, display_name, created_at;`;
-      if (rows.length === 0) return null; // email taken
-      return rowToUser(rows[0]);
+      // Atomic email reservation — fails if the email already exists.
+      const reserved = await setnx(emailKey(email), id);
+      if (!reserved) return null;
+      try {
+        await set(userKey(id), JSON.stringify(record));
+      } catch (error) {
+        // Roll back the reservation so the email isn't permanently stuck.
+        await del(emailKey(email)).catch(() => {});
+        throw error;
+      }
+      return record;
     } catch (error) {
-      console.error("createUser DB error", error);
+      console.error("createUser KV error", error);
       return null;
     }
   }
 
   if (memUsersByEmail.has(email)) return null;
-  const rec: UserRecord = {
-    id,
-    email,
-    passwordHash: params.passwordHash,
-    displayName,
-    createdAt,
-  };
-  memUsersById.set(id, rec);
-  memUsersByEmail.set(email, rec);
-  return rec;
+  memUsersById.set(id, record);
+  memUsersByEmail.set(email, record);
+  return record;
 }
 
 export async function findUserByEmail(
   email: string,
 ): Promise<UserRecord | null> {
   const key = normalizeEmail(email);
-  if (hasDb) {
+  if (usingKv) {
     try {
-      await ensureTables();
-      const { rows } = await sql<UserRow>`
-        SELECT id, email, password_hash, display_name, created_at
-        FROM users WHERE email = ${key} LIMIT 1;`;
-      return rows[0] ? rowToUser(rows[0]) : null;
+      const id = await get(emailKey(key));
+      if (!id) return null;
+      return parseUser(await get(userKey(id)));
     } catch (error) {
-      console.error("findUserByEmail DB error", error);
+      console.error("findUserByEmail KV error", error);
       return null;
     }
   }
@@ -151,15 +137,11 @@ export async function findUserByEmail(
 }
 
 export async function getUserById(id: string): Promise<UserRecord | null> {
-  if (hasDb) {
+  if (usingKv) {
     try {
-      await ensureTables();
-      const { rows } = await sql<UserRow>`
-        SELECT id, email, password_hash, display_name, created_at
-        FROM users WHERE id = ${id} LIMIT 1;`;
-      return rows[0] ? rowToUser(rows[0]) : null;
+      return parseUser(await get(userKey(id)));
     } catch (error) {
-      console.error("getUserById DB error", error);
+      console.error("getUserById KV error", error);
       return null;
     }
   }
@@ -169,25 +151,11 @@ export async function getUserById(id: string): Promise<UserRecord | null> {
 export async function listUserFavorites(
   userId: string,
 ): Promise<FavoriteCoin[]> {
-  if (hasDb) {
+  if (usingKv) {
     try {
-      await ensureTables();
-      const { rows } = await sql<{
-        symbol: string;
-        name: string;
-        added_at: string;
-      }>`SELECT symbol, name, added_at FROM user_favorites
-         WHERE user_id = ${userId} ORDER BY added_at DESC;`;
-      return rows.map((r) => ({
-        symbol: r.symbol,
-        name: r.name,
-        added_at:
-          typeof r.added_at === "string"
-            ? r.added_at
-            : new Date(r.added_at).toISOString(),
-      }));
+      return parseFavorites(await get(favsKey(userId)));
     } catch (error) {
-      console.error("listUserFavorites DB error", error);
+      console.error("listUserFavorites KV error", error);
       return [];
     }
   }
@@ -199,40 +167,44 @@ export async function addUserFavorite(
   userId: string,
   fav: FavoriteCoin,
 ): Promise<void> {
-  const addedAt = fav.added_at ?? new Date().toISOString();
-  if (hasDb) {
+  const entry: FavoriteCoin = {
+    symbol: fav.symbol,
+    name: fav.name,
+    added_at: fav.added_at ?? new Date().toISOString(),
+  };
+
+  if (usingKv) {
     try {
-      await ensureTables();
-      await sql`INSERT INTO user_favorites (user_id, symbol, name, added_at)
-        VALUES (${userId}, ${fav.symbol}, ${fav.name}, ${addedAt})
-        ON CONFLICT (user_id, symbol) DO NOTHING;`;
-      return;
+      const list = parseFavorites(await get(favsKey(userId)));
+      if (list.some((f) => f.symbol === entry.symbol)) return;
+      list.push(entry);
+      await set(favsKey(userId), JSON.stringify(list));
     } catch (error) {
-      console.error("addUserFavorite DB error", error);
-      return;
+      console.error("addUserFavorite KV error", error);
     }
+    return;
   }
+
   if (!memFavorites.has(userId)) memFavorites.set(userId, new Map());
   const map = memFavorites.get(userId)!;
-  if (!map.has(fav.symbol)) {
-    map.set(fav.symbol, { ...fav, added_at: addedAt });
-  }
+  if (!map.has(entry.symbol)) map.set(entry.symbol, entry);
 }
 
 export async function removeUserFavorite(
   userId: string,
   symbol: string,
 ): Promise<void> {
-  if (hasDb) {
+  if (usingKv) {
     try {
-      await ensureTables();
-      await sql`DELETE FROM user_favorites
-        WHERE user_id = ${userId} AND symbol = ${symbol};`;
-      return;
+      const list = parseFavorites(await get(favsKey(userId)));
+      const next = list.filter((f) => f.symbol !== symbol);
+      if (next.length !== list.length) {
+        await set(favsKey(userId), JSON.stringify(next));
+      }
     } catch (error) {
-      console.error("removeUserFavorite DB error", error);
-      return;
+      console.error("removeUserFavorite KV error", error);
     }
+    return;
   }
   memFavorites.get(userId)?.delete(symbol);
 }

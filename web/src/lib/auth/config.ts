@@ -10,7 +10,7 @@ export type AuthEnvironmentStatus = {
   };
   database: {
     ready: boolean;
-    provider: "vercel-postgres" | "memory";
+    provider: "kv" | "memory";
   };
 };
 
@@ -22,16 +22,21 @@ export function authSecretConfigured(): boolean {
   return (process.env.AUTH_SECRET?.length ?? 0) >= AUTH_SECRET_MIN_LENGTH;
 }
 
-export function postgresConfigured(): boolean {
-  return Boolean(process.env.POSTGRES_URL) ||
-    Boolean(process.env.POSTGRES_PRISMA_URL) ||
-    Boolean(process.env.POSTGRES_USER);
+/**
+ * Accounts persist in the project's Upstash KV/Redis (the same store already
+ * used for telemetry). Configured iff the REST credentials are present.
+ */
+export function kvConfigured(): boolean {
+  return (
+    Boolean(process.env.KV_REST_API_URL) &&
+    Boolean(process.env.KV_REST_API_TOKEN)
+  );
 }
 
 export function authEnvironmentStatus(): AuthEnvironmentStatus {
   const production = isProductionRuntime();
   const authSecretReady = authSecretConfigured();
-  const dbReady = postgresConfigured();
+  const dbReady = kvConfigured();
 
   return {
     production,
@@ -43,7 +48,7 @@ export function authEnvironmentStatus(): AuthEnvironmentStatus {
     },
     database: {
       ready: dbReady,
-      provider: dbReady ? "vercel-postgres" : "memory",
+      provider: dbReady ? "kv" : "memory",
     },
   };
 }

@@ -86,6 +86,12 @@ export async function get(key: string): Promise<string | null> {
   return typeof result === "string" ? result : null;
 }
 
+/** Atomic create-only set. Returns true if the key was set (didn't exist). */
+export async function setnx(key: string, value: string): Promise<boolean> {
+  const result = await execute(["SET", key, value, "NX"]);
+  return result === "OK";
+}
+
 export function kvAvailable(): boolean {
   return getCreds() != null;
 }
