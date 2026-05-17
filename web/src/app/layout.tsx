@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, Syne, Fredoka } from "next/font/google";
 import { AuthBootstrap } from "@/components/AuthBootstrap";
 import { BottomNav } from "@/components/BottomNav";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { PageTransition } from "@/components/PageTransition";
 import { ServiceWorkerProvider } from "@/components/ServiceWorkerProvider";
 import "./globals.css";
@@ -55,6 +56,7 @@ export default function RootLayout({
         <AuthBootstrap />
         <PageTransition>{children}</PageTransition>
         <BottomNav />
+        <InstallPrompt />
         <ServiceWorkerProvider />
       </body>
     </html>

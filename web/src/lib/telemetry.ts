@@ -106,6 +106,15 @@ export type TelemetryEvent =
         to: number;
         timeframe: "1h" | "24h" | "7d" | "30d" | "market_cap";
       };
+    }
+  | {
+      type: "pwa_install";
+      recordedAt: string;
+      sessionId: string;
+      payload: {
+        platform: "android" | "ios";
+        action: "shown" | "accepted" | "dismissed";
+      };
     };
 
 const STORAGE_KEY = "coincanvas-telemetry";
