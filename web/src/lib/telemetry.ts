@@ -56,6 +56,24 @@ export type TelemetryEvent =
       payload: { stepsViewed: number };
     }
   | {
+      type: "auth_signed_up";
+      recordedAt: string;
+      sessionId: string;
+      payload: { source: "register_page" | "onboarding" };
+    }
+  | {
+      type: "auth_logged_in";
+      recordedAt: string;
+      sessionId: string;
+      payload: Record<string, never>;
+    }
+  | {
+      type: "auth_logged_out";
+      recordedAt: string;
+      sessionId: string;
+      payload: Record<string, never>;
+    }
+  | {
       type: "ai_explanation_loaded";
       recordedAt: string;
       sessionId: string;

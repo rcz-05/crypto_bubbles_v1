@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BubbleChart } from "@/components/BubbleChart";
 import { BubblePager } from "@/components/BubblePager";
 import { CoinModal } from "@/components/CoinModal";
+import { AccountControl } from "@/components/AccountControl";
 import { useMarketStore } from "@/store/market";
 import { useFavoritesStore } from "@/store/favorites";
 import { useBubblePagination } from "@/hooks/useBubblePagination";
@@ -163,6 +164,7 @@ export default function HomePage() {
         </Link>
 
         <div className="controls compact">
+          <AccountControl />
           <Link href="/favorites" className="nav-link">
             Favorites ({favorites.length})
           </Link>

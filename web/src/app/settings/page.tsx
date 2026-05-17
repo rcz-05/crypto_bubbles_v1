@@ -10,11 +10,16 @@ import {
   TelemetryEvent,
 } from "@/lib/telemetry";
 import { resetOnboarding } from "@/components/OnboardingOverlay";
+import { AccountControl } from "@/components/AccountControl";
+import { useAuthStore } from "@/store/auth";
 
 export default function SettingsPage() {
   const [events, setEvents] = useState<TelemetryEvent[]>(() => loadTelemetry());
   const [favoriteCount] = useState(() => loadLocalFavorites().length);
   const [downloadState, setDownloadState] = useState<"idle" | "done">("idle");
+  const authStatus = useAuthStore((s) => s.status);
+  const authUser = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
 
   const summary = useMemo(() => {
     const contextLoads = events.filter(
@@ -69,6 +74,7 @@ export default function SettingsPage() {
         </div>
         <div className="topbar-copy">Sources, local data, and app diagnostics.</div>
         <div className="controls">
+          <AccountControl />
           <Link href="/" className="nav-link">
             Canvas
           </Link>
@@ -126,6 +132,47 @@ export default function SettingsPage() {
         </section>
 
         <div className="settings-grid">
+          <div className="list-card">
+            {authStatus === "authenticated" && authUser ? (
+              <>
+                <div className="account-section">
+                  <div style={{ fontWeight: 700 }}>
+                    Signed in{authUser.displayName ? ` as ${authUser.displayName}` : ""}
+                  </div>
+                  <div style={{ color: "var(--muted)" }}>
+                    {authUser.email} · your saved coins sync to this account on
+                    every device you sign in on.
+                  </div>
+                </div>
+                <button
+                  className="refresh-btn secondary"
+                  type="button"
+                  onClick={() => void logout()}
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="account-section">
+                  <div style={{ fontWeight: 700 }}>Your account</div>
+                  <div style={{ color: "var(--muted)" }}>
+                    Create a free account to keep your favorites on every
+                    device. You can keep using CoinCanvas as a guest too.
+                  </div>
+                </div>
+                <div className="account-actions">
+                  <Link href="/login" className="refresh-btn secondary">
+                    Sign in
+                  </Link>
+                  <Link href="/register" className="refresh-btn">
+                    Create account
+                  </Link>
+                </div>
+              </>
+            )}
+          </div>
+
           <div className="list-card">
             <div>
               <div style={{ fontWeight: 700 }}>Verified market data</div>

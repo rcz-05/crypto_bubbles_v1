@@ -3868,3 +3868,135 @@ details[open] > *:not(summary) {
     transition: none;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Auth screens (login / register) — same design system as the rest.  */
+/* ------------------------------------------------------------------ */
+.auth-wrap {
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100dvh - 160px);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  gap: 22px;
+}
+
+.auth-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-optional {
+  color: var(--muted);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.auth-input {
+  width: 100%;
+  /* 16px keeps iOS Safari from auto-zooming the form on focus. */
+  font-size: 16px;
+  min-height: 48px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(24, 33, 40, 0.12);
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text);
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.auth-input:focus {
+  border-color: rgba(13, 138, 85, 0.45);
+  box-shadow: 0 0 0 4px rgba(13, 138, 85, 0.08);
+}
+
+.auth-error {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.auth-submit {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 2px;
+  font-size: 1rem;
+}
+
+.auth-submit:disabled {
+  opacity: 0.65;
+  cursor: progress;
+}
+
+.auth-alt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+}
+
+.auth-alt-link {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.auth-guest {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* Topbar account chip — keep long emails from blowing out the bar. */
+.account-chip {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .auth-wrap {
+    min-height: calc(100dvh - 200px);
+  }
+  .auth-card {
+    max-width: 100%;
+  }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { trackEvent } from "@/lib/telemetry";
 
 const STORAGE_KEY = "coincanvas-onboarding-seen";
@@ -25,6 +26,10 @@ const steps = [
   {
     title: "You're ready",
     body: "Start scanning the board. Tap a bubble when you're curious. The context layer will do the explaining. You can always revisit this guide from Settings.",
+  },
+  {
+    title: "Make it yours",
+    body: "Create a free account so your saved coins stay with you on any device. Prefer to look around first? Keep exploring as a guest — you can sign up anytime.",
   },
 ];
 
@@ -86,18 +91,47 @@ export function OnboardingOverlay() {
         <p className="onboarding-body">{current.body}</p>
 
         <div className="onboarding-actions">
-          {step > 0 ? (
-            <button className="refresh-btn secondary" onClick={prev} type="button">
-              Back
-            </button>
+          {isLast ? (
+            <>
+              <button
+                className="refresh-btn secondary"
+                onClick={dismiss}
+                type="button"
+              >
+                Maybe later
+              </button>
+              <Link
+                href="/register"
+                className="refresh-btn"
+                onClick={dismiss}
+              >
+                Create account
+              </Link>
+            </>
           ) : (
-            <button className="refresh-btn secondary" onClick={dismiss} type="button">
-              Skip
-            </button>
+            <>
+              {step > 0 ? (
+                <button
+                  className="refresh-btn secondary"
+                  onClick={prev}
+                  type="button"
+                >
+                  Back
+                </button>
+              ) : (
+                <button
+                  className="refresh-btn secondary"
+                  onClick={dismiss}
+                  type="button"
+                >
+                  Skip
+                </button>
+              )}
+              <button className="refresh-btn" onClick={next} type="button">
+                Next
+              </button>
+            </>
           )}
-          <button className="refresh-btn" onClick={next} type="button">
-            {isLast ? "Start scanning" : "Next"}
-          </button>
         </div>
       </div>
     </div>

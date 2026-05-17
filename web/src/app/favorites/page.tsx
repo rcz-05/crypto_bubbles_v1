@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { CoinModal } from "@/components/CoinModal";
+import { AccountControl } from "@/components/AccountControl";
 import type { Coin } from "@/lib/coingecko";
 import { useFavoritesStore } from "@/store/favorites";
 import { useMarketStore } from "@/store/market";
@@ -152,6 +153,7 @@ export default function FavoritesPage() {
           Your saved coins, with live data and the same AI interpretation a tap away.
         </div>
         <div className="controls">
+          <AccountControl />
           <Link href="/" className="nav-link">
             Canvas
           </Link>

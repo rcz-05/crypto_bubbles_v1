@@ -1,83 +1,58 @@
 import { NextResponse } from "next/server";
-import { sql } from "@vercel/postgres";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import {
+  addUserFavorite,
+  listUserFavorites,
+  removeUserFavorite,
+} from "@/lib/auth/store";
 import { FavoriteCoin } from "@/lib/favorites";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const hasDb =
-  Boolean(process.env.POSTGRES_URL) ||
-  Boolean(process.env.POSTGRES_PRISMA_URL) ||
-  Boolean(process.env.POSTGRES_USER);
-
-const memory = new Map<string, FavoriteCoin>();
-async function ensureTable() {
-  if (!hasDb) return;
-  await sql`CREATE TABLE IF NOT EXISTS favorite_coins (
-    id serial PRIMARY KEY,
-    symbol text UNIQUE NOT NULL,
-    name text NOT NULL,
-    added_at timestamptz DEFAULT now()
-  );`;
+// Favorites are now scoped to the signed-in user. Guests get a 401 and the
+// client keeps their list in localStorage only (no more shared global list).
+function guest() {
+  return NextResponse.json(
+    { error: "Sign in to sync favorites." },
+    { status: 401 },
+  );
 }
 
 export async function GET() {
-  if (hasDb) {
-    try {
-      await ensureTable();
-      const { rows } = await sql<FavoriteCoin>`SELECT symbol, name, added_at FROM favorite_coins ORDER BY added_at DESC`;
-      return NextResponse.json(rows);
-    } catch (error) {
-      console.error("Favorites DB GET error", error);
-    }
-  }
-
-  return NextResponse.json(Array.from(memory.values()));
+  const user = await getCurrentUser();
+  if (!user) return guest();
+  return NextResponse.json(await listUserFavorites(user.id));
 }
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as Partial<FavoriteCoin>;
-  if (!body.symbol || !body.name) {
-    return NextResponse.json({ error: "symbol and name required" }, { status: 400 });
+  const user = await getCurrentUser();
+  if (!user) return guest();
+
+  const body = (await req.json().catch(() => null)) as Partial<FavoriteCoin> | null;
+  if (!body || !body.symbol || !body.name) {
+    return NextResponse.json(
+      { error: "symbol and name required" },
+      { status: 400 },
+    );
   }
 
-  const newFav: FavoriteCoin = {
+  await addUserFavorite(user.id, {
     symbol: body.symbol,
     name: body.name,
-    added_at: new Date().toISOString(),
-  };
-
-  if (hasDb) {
-    try {
-      await ensureTable();
-      await sql`INSERT INTO favorite_coins(symbol, name, added_at) VALUES(${body.symbol}, ${body.name}, ${newFav.added_at}) ON CONFLICT (symbol) DO NOTHING;`;
-      return NextResponse.json({ ok: true }, { status: 201 });
-    } catch (error) {
-      console.error("Favorites POST error", error);
-    }
-  }
-
-  memory.set(body.symbol, newFav);
+    added_at: body.added_at ?? new Date().toISOString(),
+  });
   return NextResponse.json({ ok: true }, { status: 201 });
 }
 
 export async function DELETE(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const symbol = searchParams.get("symbol");
+  const user = await getCurrentUser();
+  if (!user) return guest();
+
+  const symbol = new URL(req.url).searchParams.get("symbol");
   if (!symbol) {
     return NextResponse.json({ error: "symbol required" }, { status: 400 });
   }
-
-  if (hasDb) {
-    try {
-      await ensureTable();
-      await sql`DELETE FROM favorite_coins WHERE symbol = ${symbol};`;
-      return NextResponse.json({ ok: true });
-    } catch (error) {
-      console.error("Favorites DELETE error", error);
-    }
-  }
-
-  memory.delete(symbol);
+  await removeUserFavorite(user.id, symbol);
   return NextResponse.json({ ok: true });
 }

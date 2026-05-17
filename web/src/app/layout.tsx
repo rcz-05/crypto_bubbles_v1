@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, Syne, Fredoka } from "next/font/google";
+import { AuthBootstrap } from "@/components/AuthBootstrap";
 import { BottomNav } from "@/components/BottomNav";
 import { PageTransition } from "@/components/PageTransition";
 import { ServiceWorkerProvider } from "@/components/ServiceWorkerProvider";
@@ -51,6 +52,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${display.variable} ${body.variable} ${bubble.variable}`}>
+        <AuthBootstrap />
         <PageTransition>{children}</PageTransition>
         <BottomNav />
         <ServiceWorkerProvider />
