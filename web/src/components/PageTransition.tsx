@@ -9,6 +9,8 @@ const ROUTE_ORDER: Record<string, number> = {
   "/": 0,
   "/favorites": 1,
   "/settings": 2,
+  "/login": 3,
+  "/register": 4,
 };
 
 type Direction = "fade" | "left" | "right";

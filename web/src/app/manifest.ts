@@ -13,8 +13,8 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait-primary",
     lang: "en",
     dir: "ltr",
-    background_color: "#f3efe5",
-    theme_color: "#f3efe5",
+    background_color: "#050505",
+    theme_color: "#050505",
     categories: ["finance", "education"],
     icons: [
       // /icon → 192×192 (Next.js convention from app/icon.tsx)

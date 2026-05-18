@@ -8,6 +8,7 @@ import { AccountControl } from "@/components/AccountControl";
 import type { Coin } from "@/lib/coingecko";
 import { useFavoritesStore } from "@/store/favorites";
 import { useMarketStore } from "@/store/market";
+import { useAuthStore } from "@/store/auth";
 import { trackEvent } from "@/lib/telemetry";
 
 type SortKey = "added" | "gainer" | "loser" | "alpha";
@@ -52,9 +53,16 @@ function relativeTime(iso?: string) {
 
 export default function FavoritesPage() {
   const { favorites, load, remove, add, isFavorite } = useFavoritesStore();
+  const favMode = useFavoritesStore((s) => s.mode);
+  const authStatus = useAuthStore((s) => s.status);
   const { coins, fetchCoins } = useMarketStore();
   const [sort, setSort] = useState<SortKey>("added");
   const [selected, setSelected] = useState<Coin | null>(null);
+
+  const syncState =
+    authStatus === "authenticated" || favMode === "user"
+      ? { cls: "account", label: "Synced to your account" }
+      : { cls: "", label: "Saved on this device" };
 
   useEffect(() => {
     load();
@@ -177,6 +185,10 @@ export default function FavoritesPage() {
                   ? "1 coin you're tracking."
                   : `${favorites.length} coins you're tracking.`}
             </h1>
+            <span className={`sync-state ${syncState.cls}`}>
+              <span className="sync-dot" />
+              {syncState.label}
+            </span>
           </div>
 
           {favorites.length > 0 ? (

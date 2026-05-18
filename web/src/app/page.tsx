@@ -31,7 +31,7 @@ function formatCompact(value: number) {
 }
 
 export default function HomePage() {
-  const { coins, status, error, fetchCoins, lastUpdated, timeFrame, setTimeFrame } = useMarketStore();
+  const { coins, status, error, fetchCoins, lastUpdated, stale, timeFrame, setTimeFrame } = useMarketStore();
   const { favorites, load, add, remove, isFavorite } = useFavoritesStore();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Coin | null>(null);
@@ -154,6 +154,14 @@ export default function HomePage() {
       })
     : "—";
 
+  // Loading-state semantics: a fresh load (no coins yet) shows a skeleton,
+  // never "no results". "No match" only when coins exist but the search
+  // filters all of them out.
+  const initialLoading = coins.length === 0 && status !== "error";
+  const noMatch =
+    coins.length > 0 && filtered.length === 0 && status !== "loading";
+  const marketError = status === "error" && coins.length === 0;
+
   return (
     <div className="app-shell">
       <div className="ambient-grid" aria-hidden="true" />
@@ -179,7 +187,48 @@ export default function HomePage() {
       </header>
 
       <main className="page-wrap home-page">
-        <section className="hero-grid">
+        {/* Mobile-first: a compact market strip puts the board in the first
+            viewport. The richer hero stays on desktop only. */}
+        <section className="market-strip" aria-label="Market summary">
+          <div className="search market-strip-search">
+            <input
+              id="coin-search-mobile"
+              type="text"
+              inputMode="search"
+              enterKeyHint="search"
+              placeholder="Search BTC, ETH, Solana…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Search the board"
+            />
+          </div>
+          <div className="market-strip-stats">
+            <span className="market-strip-stat up">
+              ▲ {marketMood.winners}
+            </span>
+            <span className="market-strip-stat down">
+              ▼ {marketMood.losers}
+            </span>
+            <span className="market-strip-time">
+              <span className={`status-dot${status === "loading" ? " pulsing" : ""}`} />
+              {status === "loading"
+                ? "Updating…"
+                : stale
+                  ? "Offline snapshot"
+                  : `Updated ${lastUpdatedLabel}`}
+            </span>
+            <button
+              className="market-strip-refresh"
+              onClick={handleRefresh}
+              aria-label="Refresh prices"
+              type="button"
+            >
+              ↻
+            </button>
+          </div>
+        </section>
+
+        <section className="hero-grid desktop-only">
           <div className="hero-panel">
             <h1>Understand a fast mover without leaving the board.</h1>
             <p className="hero-copy">
@@ -189,7 +238,7 @@ export default function HomePage() {
             <div className="chip-row">
               <span className="chip active">Multi-timeframe scanning</span>
               <span className="chip">Guided context modal</span>
-              <span className="chip">No paid APIs required</span>
+              <span className="chip">Live market data</span>
             </div>
           </div>
 
@@ -245,7 +294,7 @@ export default function HomePage() {
         </section>
 
         <section className="board-card">
-          <div className="board-header">
+          <div className="board-header desktop-only">
             <div>
               <p className="section-label">Live board</p>
               <h2>Tap any bubble to open the guided context modal.</h2>
@@ -306,28 +355,46 @@ export default function HomePage() {
           ) : null}
 
           <div ref={ref} className="board">
-          {filtered.length === 0 && status !== "loading" ? (
-            <div className="ghost">No coins match that search.</div>
+          {initialLoading ? (
+            <div className="board-skeleton" aria-hidden>
+              <div className="board-skeleton-shimmer" />
+              <span className="board-skeleton-label">Loading live market…</span>
+            </div>
+          ) : noMatch ? (
+            <div className="ghost">
+              No coins match “{deferredSearch.trim()}”.
+            </div>
+          ) : marketError ? (
+            <div className="ghost">
+              Couldn’t load market data. {error}
+              <button
+                className="refresh-btn secondary ghost-retry"
+                type="button"
+                onClick={handleRefresh}
+              >
+                Retry
+              </button>
+            </div>
           ) : null}
 
-          <div
-            key={`${isMobile ? `${timeFrame}-${page}` : "all"}-${refreshNonce}`}
-            className={`board-content slide-from-${slideDir}`}
-          >
-            <BubbleChart
-              data={pagedCoins}
-              width={drawWidth}
-              height={drawHeight}
-              timeFrame={timeFrame}
-              onSelect={handleSelect}
-            />
-          </div>
-
-          {status === "loading" && (
-            <div className="board-overlay">
-              Updating prices…
+          {!initialLoading && !noMatch && !marketError ? (
+            <div
+              key={`${isMobile ? `${timeFrame}-${page}` : "all"}-${refreshNonce}`}
+              className={`board-content slide-from-${slideDir}`}
+            >
+              <BubbleChart
+                data={pagedCoins}
+                width={drawWidth}
+                height={drawHeight}
+                timeFrame={timeFrame}
+                onSelect={handleSelect}
+              />
             </div>
-          )}
+          ) : null}
+
+          {status === "loading" && coins.length > 0 ? (
+            <div className="board-overlay subtle">Updating prices…</div>
+          ) : null}
         </div>
 
         <div className="status-bar">
@@ -336,6 +403,11 @@ export default function HomePage() {
             {marketMood.topLoser ? (
               <span>
                 Watch {marketMood.topLoser.symbol.toUpperCase()} {getChangeForTimeFrame(marketMood.topLoser, timeFrame).toFixed(1)}%
+              </span>
+            ) : null}
+            {stale ? (
+              <span className="status-error">
+                Showing a cached snapshot — reconnect to refresh.
               </span>
             ) : null}
             {error ? <span className="status-error">{error}</span> : null}

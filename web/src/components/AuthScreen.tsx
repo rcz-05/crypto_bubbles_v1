@@ -40,6 +40,7 @@ export function AuthScreen({ mode }: { mode: Mode }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -133,22 +134,37 @@ export function AuthScreen({ mode }: { mode: Mode }) {
               <label className="section-label" htmlFor="auth-password">
                 Password
               </label>
-              <input
-                id="auth-password"
-                className="auth-input"
-                type="password"
-                autoComplete={
-                  mode === "login" ? "current-password" : "new-password"
-                }
-                enterKeyHint="go"
-                required
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={
-                  mode === "register" ? "At least 8 characters" : "Your password"
-                }
-              />
+              <div className="auth-password-wrap">
+                <input
+                  id="auth-password"
+                  className="auth-input"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete={
+                    mode === "login" ? "current-password" : "new-password"
+                  }
+                  enterKeyHint="go"
+                  required
+                  minLength={8}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={
+                    mode === "register"
+                      ? "At least 8 characters"
+                      : "Your password"
+                  }
+                />
+                <button
+                  type="button"
+                  className="auth-password-toggle"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-pressed={showPassword}
+                  aria-label={
+                    showPassword ? "Hide password" : "Show password"
+                  }
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
             </div>
 
             {error ? (

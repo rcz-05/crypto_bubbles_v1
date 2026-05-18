@@ -8,6 +8,8 @@ type MarketState = {
   status: "idle" | "loading" | "error";
   error?: string;
   lastUpdated?: number;
+  /** Served from the offline service-worker cache fallback. */
+  stale: boolean;
   timeFrame: TimeFrame;
   setTimeFrame: (tf: TimeFrame) => void;
   fetchCoins: () => Promise<void>;
@@ -18,13 +20,14 @@ export const useMarketStore = create<MarketState>((set) => ({
   status: "idle",
   error: undefined,
   lastUpdated: undefined,
+  stale: false,
   timeFrame: "24h",
   setTimeFrame: (tf) => set({ timeFrame: tf }),
   fetchCoins: async () => {
     set({ status: "loading", error: undefined });
     try {
-      const coins = await fetchMarketData();
-      set({ coins, status: "idle", lastUpdated: Date.now() });
+      const { coins, stale } = await fetchMarketData();
+      set({ coins, stale, status: "idle", lastUpdated: Date.now() });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Unable to fetch market data";

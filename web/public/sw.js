@@ -11,8 +11,10 @@
  *   /api/explanation        — POST-only; needs an explicit client cache
  */
 
-const SHELL_CACHE = "coincanvas-shell-v1";
-const MARKET_CACHE = "coincanvas-market-v1";
+// Bump cache names whenever the shell theme/CSS changes so installed PWAs
+// pick up the new (dark) shell instead of serving a stale cream cache.
+const SHELL_CACHE = "coincanvas-shell-v2-dark";
+const MARKET_CACHE = "coincanvas-market-v2";
 const ALL_CACHES = [SHELL_CACHE, MARKET_CACHE];
 
 const MARKET_FALLBACK_TTL_MS = 24 * 60 * 60 * 1000;

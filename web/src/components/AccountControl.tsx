@@ -28,5 +28,14 @@ export function AccountControl() {
       </Link>
     );
   }
-  return null;
+  // Session not resolved yet — render a stable, same-size skeleton so the
+  // topbar doesn't shift or flicker while auth bootstraps.
+  return (
+    <span
+      className="nav-link account-chip account-chip-skeleton"
+      aria-hidden
+    >
+      &nbsp;
+    </span>
+  );
 }

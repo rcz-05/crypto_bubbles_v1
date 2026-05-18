@@ -35,11 +35,25 @@ export function getChangeForTimeFrame(coin: Coin, tf: TimeFrame): number {
 export const COINGECKO_ENDPOINT =
   "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=1h%2C7d%2C30d";
 
-export async function fetchMarketData(): Promise<Coin[]> {
+export type MarketSnapshot = {
+  coins: Coin[];
+  /** True when served from the service-worker offline cache fallback. */
+  stale: boolean;
+  cachedAt: number | null;
+};
+
+export async function fetchMarketData(): Promise<MarketSnapshot> {
   const res = await fetch("/api/market", { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`Market API failed with ${res.status}`);
   }
   const data = (await res.json()) as Coin[];
-  return data;
+  // The service worker stamps this header on its offline cache fallback.
+  const cachedAtRaw = res.headers.get("x-coincanvas-cached-at");
+  const cachedAt = cachedAtRaw ? Number(cachedAtRaw) : null;
+  return {
+    coins: data,
+    stale: cachedAt != null && Number.isFinite(cachedAt),
+    cachedAt,
+  };
 }
