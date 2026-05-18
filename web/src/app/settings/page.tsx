@@ -31,8 +31,12 @@ export default function SettingsPage() {
   const authStatus = useAuthStore((s) => s.status);
   const authUser = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const pro = useAuthStore((s) => s.pro);
+  const subscribePro = useAuthStore((s) => s.subscribePro);
+  const cancelPro = useAuthStore((s) => s.cancelPro);
 
   const signedIn = authStatus === "authenticated" && authUser;
+  const isPro = Boolean(pro?.isPro);
 
   const handleDownload = () => {
     const blob = new Blob([exportTelemetryPayload()], {
@@ -115,6 +119,51 @@ export default function SettingsPage() {
             </div>
           )}
         </section>
+
+        {/* 1b — Membership */}
+        <div className="settings-section-label">Membership</div>
+        <div className="settings-grid">
+          <div className="list-card">
+            <div>
+              <div className="list-card-title">
+                CoinCanvas Pro{" "}
+                {isPro ? (
+                  <span className="sync-state account pro-inline-badge">
+                    {pro?.state === "trial" ? "Trial" : "Active"}
+                  </span>
+                ) : null}
+              </div>
+              <div className="list-card-sub">
+                {isPro
+                  ? "Multi-factor BUY / HODL / SELL signal, peer benchmark and volatility profile are unlocked in every coin card."
+                  : signedIn
+                    ? "Unlock the multi-factor signal, peer benchmark and volatility profile. 7-day free trial."
+                    : "Pro is tied to your account. Create a free account to start the 7-day trial."}
+              </div>
+            </div>
+            {isPro ? (
+              <button
+                className="refresh-btn secondary"
+                type="button"
+                onClick={() => void cancelPro()}
+              >
+                Cancel Pro
+              </button>
+            ) : signedIn ? (
+              <button
+                className="refresh-btn"
+                type="button"
+                onClick={() => void subscribePro()}
+              >
+                Start free trial
+              </button>
+            ) : (
+              <Link href="/register" className="refresh-btn">
+                Create account
+              </Link>
+            )}
+          </div>
+        </div>
 
         {/* 2 — Data & sources */}
         <div className="settings-section-label">Data &amp; sources</div>

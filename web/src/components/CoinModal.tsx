@@ -8,6 +8,7 @@ import type { CoinExplanation, ExplanationTier } from "@/lib/explanation";
 import { trackEvent } from "@/lib/telemetry";
 import { Overlay } from "@/components/Overlay";
 import { pushOverlay, popOverlay } from "@/lib/overlay-lock";
+import { ProSection } from "@/components/ProSection";
 
 type Props = {
   coin: Coin | null;
@@ -462,6 +463,8 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
             </div>
           ) : null}
         </section>
+
+        <ProSection coin={coin} />
 
         <div className="context-grid">
           <section className="context-card accent">

@@ -115,6 +115,24 @@ export type TelemetryEvent =
         platform: "android" | "ios";
         action: "shown" | "accepted" | "dismissed";
       };
+    }
+  | {
+      type: "pro_subscribed";
+      recordedAt: string;
+      sessionId: string;
+      payload: { state: "none" | "trial" | "active" };
+    }
+  | {
+      type: "pro_canceled";
+      recordedAt: string;
+      sessionId: string;
+      payload: Record<string, never>;
+    }
+  | {
+      type: "pro_signal_viewed";
+      recordedAt: string;
+      sessionId: string;
+      payload: { symbol: string; verdict: "BUY" | "HODL" | "SELL" };
     };
 
 const STORAGE_KEY = "coincanvas-telemetry";
