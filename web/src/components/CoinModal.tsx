@@ -6,6 +6,8 @@ import { CoinContext } from "@/lib/coin-context";
 import { Coin } from "@/lib/coingecko";
 import type { CoinExplanation, ExplanationTier } from "@/lib/explanation";
 import { trackEvent } from "@/lib/telemetry";
+import { Overlay } from "@/components/Overlay";
+import { pushOverlay, popOverlay } from "@/lib/overlay-lock";
 
 type Props = {
   coin: Coin | null;
@@ -245,6 +247,13 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
     return () => window.removeEventListener("keydown", handler);
   }, [coin, stableClose]);
 
+  // Single-blocking-layer: lock scroll + hide dock/install while open.
+  useEffect(() => {
+    if (!coin) return;
+    pushOverlay();
+    return () => popOverlay();
+  }, [coin]);
+
   const intradayRange = useMemo(() => {
     if (!coin?.high_24h || !coin.low_24h || coin.low_24h <= 0) {
       return null;
@@ -298,10 +307,10 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
   const fav = isFavorite(coin.symbol);
 
   return (
+    <Overlay>
     <div
       className={`modal-backdrop${closing ? " closing" : ""}`}
       onClick={requestClose}
-      style={{ zIndex: 100 }}
     >
       {/* Click outside to close */}
       <div
@@ -634,5 +643,6 @@ export function CoinModal({ coin, onClose, onToggleFavorite, isFavorite }: Props
       </div>
 
     </div>
+    </Overlay>
   );
 }

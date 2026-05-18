@@ -58,6 +58,10 @@ export default function RootLayout({
         <BottomNav />
         <InstallPrompt />
         <ServiceWorkerProvider />
+        {/* All fixed overlays (modal, onboarding, install prompt) portal
+            here — outside the route-transition transform subtree so their
+            position:fixed anchors to the viewport, not .app-shell. */}
+        <div id="overlay-root" />
       </body>
     </html>
   );

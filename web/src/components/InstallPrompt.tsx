@@ -3,9 +3,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { trackEvent } from "@/lib/telemetry";
+import { Overlay } from "@/components/Overlay";
 
 const DISMISS_KEY = "cc_install_dismissed_at";
+const ONBOARDING_KEY = "coincanvas-onboarding-seen";
 const SNOOZE_MS = 14 * 24 * 60 * 60 * 1000; // re-ask after 14 days
+
+/** Don't compete with the first-run onboarding for the screen. */
+function onboardingPending(): boolean {
+  try {
+    return !localStorage.getItem(ONBOARDING_KEY);
+  } catch {
+    return false;
+  }
+}
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -76,7 +87,7 @@ export function InstallPrompt() {
   }, []);
 
   useEffect(() => {
-    if (isStandalone() || recentlyDismissed()) return;
+    if (isStandalone() || recentlyDismissed() || onboardingPending()) return;
     if (pathname.startsWith("/login") || pathname.startsWith("/register")) {
       return;
     }
@@ -130,6 +141,7 @@ export function InstallPrompt() {
   if (!platform) return null;
 
   return (
+    <Overlay>
     <div className="install-prompt" role="dialog" aria-label="Install CoinCanvas">
       <span className="install-prompt-dot" aria-hidden />
       <div className="install-prompt-copy">
@@ -160,5 +172,6 @@ export function InstallPrompt() {
         ✕
       </button>
     </div>
+    </Overlay>
   );
 }

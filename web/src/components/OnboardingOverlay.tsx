@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { trackEvent } from "@/lib/telemetry";
+import { Overlay } from "@/components/Overlay";
+import { pushOverlay, popOverlay } from "@/lib/overlay-lock";
 
 const STORAGE_KEY = "coincanvas-onboarding-seen";
 
@@ -70,12 +72,20 @@ export function OnboardingOverlay() {
     setStep((s) => Math.max(0, s - 1));
   }, []);
 
+  // Single-blocking-layer: lock scroll + hide dock/install while shown.
+  useEffect(() => {
+    if (!visible) return;
+    pushOverlay();
+    return () => popOverlay();
+  }, [visible]);
+
   if (!visible) return null;
 
   const current = steps[step];
   const isLast = step === steps.length - 1;
 
   return (
+    <Overlay>
     <div className="onboarding-backdrop" onClick={dismiss}>
       <div className="onboarding-card" onClick={(e) => e.stopPropagation()}>
         <div className="onboarding-progress">
@@ -135,6 +145,7 @@ export function OnboardingOverlay() {
         </div>
       </div>
     </div>
+    </Overlay>
   );
 }
 

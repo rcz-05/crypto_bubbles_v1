@@ -28,6 +28,31 @@
   --glass-shadow: 0 10px 34px rgba(0, 0, 0, 0.55);
   --press-scale: 0.96;
   --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Single source of truth for stacking order.
+     content < topbar < bottom-nav < install < modal < onboarding.
+     Modal/onboarding deliberately outrank the dock + install banner so
+     they can never be covered or have taps stolen. */
+  --z-base: 1;
+  --z-topbar: 100;
+  --z-bottom-nav: 200;
+  --z-install: 300;
+  --z-modal: 400;
+  --z-onboarding: 500;
+
+  /* Single source of truth for fixed-chrome sizing so page padding,
+     the board height, and the install banner can't desync. */
+  --topbar-h: 64px;
+  --dock-h: 64px;
+  --dock-gap: 8px;
+  --dock-clearance: calc(
+    var(--dock-h) + var(--dock-gap) + 18px + env(safe-area-inset-bottom, 0px)
+  );
+  --install-bottom: calc(
+    var(--dock-h) + var(--dock-gap) + 14px + env(safe-area-inset-bottom, 0px)
+  );
+  /* Topbar + market strip + timeframe tabs + dock clearance. */
+  --board-chrome: 330px;
 }
 
 * {
@@ -92,7 +117,7 @@ button {
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: var(--z-topbar);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -220,13 +245,10 @@ button {
   display: contents;
 }
 
-.page-transition.slide-fade > *,
-.page-transition.slide-right > *,
-.page-transition.slide-left > * {
-  /* Scoped to the one-shot route animation only. */
-  will-change: transform, opacity;
-}
-
+/* No persistent will-change here on purpose: it would make .app-shell a
+   containing block for any position:fixed descendant for the lifetime of
+   the page. Overlays now portal out of .app-shell anyway; the transform
+   only exists transiently inside the @keyframes below. */
 .page-transition.slide-fade > * {
   animation: page-slide-fade 320ms var(--ease-ios);
 }
@@ -672,7 +694,7 @@ button {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1213,7 +1235,7 @@ button {
 .onboarding-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: var(--z-onboarding);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1360,7 +1382,7 @@ button {
     width: min(100% - 24px, 1280px);
     padding-top: 22px;
     /* Clearance for the floating glass dock + home indicator. */
-    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: var(--dock-clearance);
   }
 
   /* Keyboard shortcut hints are meaningless on touch. */
@@ -2424,7 +2446,7 @@ details[open] > *:not(summary) {
     left: 12px;
     right: 12px;
     bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-    z-index: 100;
+    z-index: var(--z-bottom-nav);
     display: flex;
     align-items: stretch;
     gap: 2px;
@@ -2651,7 +2673,7 @@ details[open] > *:not(summary) {
   left: 50%;
   transform: translateX(-50%);
   bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-  z-index: 120;
+  z-index: var(--z-install);
   width: min(440px, calc(100vw - 24px));
   display: flex;
   align-items: center;
@@ -2668,7 +2690,7 @@ details[open] > *:not(summary) {
 @media (max-width: 760px) {
   /* Sit above the fixed bottom nav. */
   .install-prompt {
-    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    bottom: var(--install-bottom);
   }
 }
 
@@ -2848,7 +2870,7 @@ details[open] > *:not(summary) {
   /* Stable board height: fill the viewport minus chrome, no jumps. */
   .board {
     min-height: 0;
-    height: max(360px, calc(100dvh - 330px));
+    height: max(360px, calc(100dvh - var(--board-chrome)));
     border-radius: 22px;
   }
 
@@ -3096,4 +3118,18 @@ details[open] > *:not(summary) {
   .settings-account-card {
     padding: 18px;
   }
+}
+
+/* ============================================================= */
+/* Single-blocking-layer: while a modal/onboarding is open, lock  */
+/* background scroll and remove the dock + install banner so only */
+/* one interactive layer exists (no tap-stealing / collision).    */
+/* ============================================================= */
+body.overlay-open {
+  overflow: hidden;
+}
+
+body.overlay-open .bottom-nav,
+body.overlay-open .install-prompt {
+  display: none !important;
 }
